@@ -22,8 +22,6 @@ class AudioListener:
         
     def set_input_device_name(self, device_name):
         self.device_wrapper = get_device_by_name(device_name)
-                
-
 
             
     def start(self):
@@ -105,11 +103,12 @@ class AudioListener:
             except Exception as ex:
                 print(f"error - can't stop audio stream input: {ex}")
 
-        if self.recorder is not None:
-            try:
-                self.recorder.stop()
-            except Exception as ex:
-                print(f"error - can't stop recording system output: {ex}")
+        if hasattr(self, 'recorder'):
+            if self.recorder is not None:
+                try:
+                    self.recorder.stop()
+                except Exception as ex:
+                    print(f"error - can't stop recording system output: {ex}")
 
         if self.listen_thread is not None:
             self.listen_thread.join()
