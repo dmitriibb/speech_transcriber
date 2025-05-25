@@ -160,9 +160,18 @@ class TranscriberApp:
 
 
 def main():
+    hostapis = sd.query_hostapis()
+    for i, h in enumerate(hostapis):
+        print(f"{i}: {h['name']}")
+
     root = tk.Tk()
     app = TranscriberApp(root)
     root.mainloop()
+
+
+    #
+    # for i, dev in enumerate(sd.query_devices()):
+    #     print(f"{i}: {dev['name']} ({dev['hostapi']})")
 
 if __name__ == "__main__":
     main() 

@@ -11,7 +11,7 @@ class AudioDeviceWrapper:
             self.type = deviceTypeOutput
 
     def get_name(self) -> str:
-        return f"{self.type} - {self.device_info['name']}"
+        return f"{self.type}: {self.device_info['name']} ({self.device_info['hostapi']})"
 
     @property
     def device(self):
