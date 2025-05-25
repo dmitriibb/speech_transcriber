@@ -1,6 +1,10 @@
 from threading import Lock, Thread
 from queue import Queue, Empty
 from typing import Optional
+import speech_recognition as sr
+import numpy as np
+import io
+import wave
 
 from src.output_writer import OutputWriter
 
@@ -13,6 +17,7 @@ class Transcriber:
         self._processing_queue = Queue()
         self._processing_thread: Optional[Thread] = None
         self._should_stop = False
+        self._recognizer = sr.Recognizer()
         self._start_processing_thread()
         
     def _start_processing_thread(self):
@@ -32,7 +37,8 @@ class Transcriber:
             with self._lock:
                 self.chunk_counter += 1
             chunk_transcribed = self._transcribe(chunk_audio)
-            self.output_writer.write(chunk_transcribed)
+            if chunk_transcribed:  # Only write non-empty transcriptions
+                self.output_writer.write(chunk_transcribed)
             self._processing_queue.task_done()
         except Empty:
             pass # No chunks to process, continue waiting
@@ -40,7 +46,8 @@ class Transcriber:
     def transcribe(self, chunk_audio):
         """Synchronous transcription - mainly for testing purposes."""
         chunk_transcribed = self._transcribe(chunk_audio)
-        self.output_writer.write(chunk_transcribed)
+        if chunk_transcribed:
+            self.output_writer.write(chunk_transcribed)
 
     def transcribe_async(self, chunk_audio):
         """
@@ -50,11 +57,52 @@ class Transcriber:
         self._processing_queue.put(chunk_audio)
 
     def _transcribe(self, chunk_audio) -> str:
-        return self._dummy_transcribe(chunk_audio)
+        return self._transcribe_library(chunk_audio)
 
-    def _dummy_transcribe(self, chunk_audio) -> str:
-        """Dummy transcription as per requirements."""
+    def _transcribe_dummy(self, chunk_audio) -> str:
         return f"chunk: {self.chunk_counter}, size: {chunk_audio.nbytes} bytes"
+
+    def _transcribe_library(self, chunk_audio) -> str:
+        """Main transcription method that processes the audio chunk."""
+        try:
+            # Convert numpy array to WAV format
+            wav_bytes = self._numpy_to_wav(chunk_audio)
+
+            # Convert to AudioData that speech_recognition can use
+            audio_data = sr.AudioData(wav_bytes, sample_rate=16000, sample_width=2)
+
+            # Perform the transcription
+            try:
+                text = self._recognizer.recognize_sphinx(audio_data)
+                return text
+            except sr.UnknownValueError:
+                return ""  # No speech detected
+            except sr.RequestError as e:
+                print(f"Error during transcription: {e}")
+                return ""
+
+        except Exception as e:
+            print(f"Error processing audio chunk: {e}")
+            return ""
+
+    def _numpy_to_wav(self, audio_chunk: np.ndarray) -> bytes:
+        """Convert numpy array to WAV format bytes."""
+        # Ensure audio is float32 and normalized between -1 and 1
+        if audio_chunk.dtype != np.float32:
+            audio_chunk = audio_chunk.astype(np.float32)
+        
+        # Convert to int16 for WAV format
+        audio_int16 = (audio_chunk * 32767).astype(np.int16)
+        
+        # Create WAV file in memory
+        bytes_io = io.BytesIO()
+        with wave.open(bytes_io, 'wb') as wav_file:
+            wav_file.setnchannels(1)  # Mono
+            wav_file.setsampwidth(2)  # 2 bytes per sample (16 bits)
+            wav_file.setframerate(16000)  # Sample rate
+            wav_file.writeframes(audio_int16.tobytes())
+        
+        return bytes_io.getvalue()
 
     def stop(self):
         """Stop the transcriber and its background processing."""

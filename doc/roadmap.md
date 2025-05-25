@@ -44,7 +44,7 @@ This window should be opened with predefined path = directory of the application
   - when click - set in memory boolean "transcribing" = False and change "Stop" button to "Start" button
 
 ### Iteration 1
-Status: TODO
+Status: Done
 
 Goal: Implement basic audio listening, transcribing and output files writing
 
@@ -64,4 +64,12 @@ the AudioListener doesn't wait transcribe function to finish
   - Takes chunk_transcribed string and appends in to the current output file
 
 ### Iteration 2
+Status: TODO
+
+Goal: human speech transcription with python libraries
+
+Description: In the Transcriber implement 'def _dummy_transcribe(self, chunk_audio) -> str:' method. Use python libraries.
+Import them if needed, but these libraries should use any external AI models
+
+### Iteration 3
 Status: TODO
