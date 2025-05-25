@@ -41,12 +41,6 @@ class OutputWriter:
             pass
             
     def write(self, text):
-        """
-        Write transcribed text to the current output file.
-        
-        Args:
-            text (str): Transcribed text to write
-        """
         if self.current_file is None:
             raise ValueError("No active transcription file")
             
@@ -58,3 +52,4 @@ class OutputWriter:
         """Stop writing and close the current file."""
         with self._lock:
             self.current_file = None
+        # TO REFACTOR - send callback to main and change it's status to Ready

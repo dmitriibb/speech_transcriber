@@ -1,10 +1,15 @@
 import tkinter as tk
+from enum import Enum
 from tkinter import ttk, filedialog, messagebox
 import sounddevice as sd
 import os
 from audio_listener import AudioListener
 from transcriber import Transcriber
 from output_writer import OutputWriter
+
+statusReady = "Ready"
+statusTranscribing = "Transcribing"
+statusFinishing = "Finishing"
 
 class TranscriberApp:
     def __init__(self, root):
@@ -14,13 +19,16 @@ class TranscriberApp:
         
         # State variables
         self.transcribing = False
+        self.status = tk.StringVar()
         self.selected_input = tk.StringVar()
         self.output_directory = tk.StringVar(value=os.path.dirname(os.path.abspath(__file__)))
-        
-        # Initialize components
-        self.audio_listener = AudioListener()
+
+        self.audio_listener : AudioListener = None
         
         self._create_widgets()
+
+        # init state
+        self.status.set(statusReady)
         
     def _create_widgets(self):
         # Input source selection
@@ -52,7 +60,17 @@ class TranscriberApp:
             command=self._choose_directory
         )
         choose_btn.pack(side="right", padx=(5, 0))
-        
+
+        # Status
+        status_frame = ttk.LabelFrame(self.root, text="Status", padding="10")
+        status_frame.pack(fill="x", padx=10, pady=5)
+        status_text = ttk.Label(
+            status_frame,
+            textvariable=self.status
+        )
+        status_text.pack()
+
+
         # Start/Stop button
         self.control_btn = ttk.Button(
             self.root,
@@ -100,18 +118,21 @@ class TranscriberApp:
         output_writer.start_new_file()
 
         transcriber = Transcriber(output_writer)
-        
+
+        self.audio_listener = AudioListener(transcriber)
         self.audio_listener.set_input_device(self.selected_input.get())
-        self.audio_listener.start(transcriber)
+        self.audio_listener.start()
         
         self.transcribing = True
+        self.status.set(statusTranscribing)
         self.control_btn.configure(text="Stop")
 
     def _stop_transcribing(self):
         """Stop the transcription process."""
-        self.audio_listener.stop()
-        
         self.transcribing = False
+        self.status.set(statusFinishing)
+        self.audio_listener.stop()
+
         self.control_btn.configure(text="Start")
 
 
