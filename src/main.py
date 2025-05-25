@@ -1,7 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 import sounddevice as sd
 import os
+from audio_listener import AudioListener
+from transcriber import Transcriber
+from output_writer import OutputWriter
 
 class TranscriberApp:
     def __init__(self, root):
@@ -13,6 +16,9 @@ class TranscriberApp:
         self.transcribing = False
         self.selected_input = tk.StringVar()
         self.output_directory = tk.StringVar(value=os.path.dirname(os.path.abspath(__file__)))
+        
+        # Initialize components
+        self.audio_listener = AudioListener()
         
         self._create_widgets()
         
@@ -78,12 +84,33 @@ class TranscriberApp:
             self._start_transcribing()
 
     def _start_transcribing(self):
-        print("_start_transcribing")
+        """Start the transcription process."""
+        # Validate input source and output directory
+        if not self.selected_input.get():
+            tk.messagebox.showerror("Error", "Please select an input source")
+            return
+            
+        if not os.path.exists(self.output_directory.get()):
+            tk.messagebox.showerror("Error", "Please select a valid output directory")
+            return
+
+        # Configure components
+        output_writer = OutputWriter()
+        output_writer.set_output_directory(self.output_directory.get())
+        output_writer.start_new_file()
+
+        transcriber = Transcriber(output_writer)
+        
+        self.audio_listener.set_input_device(self.selected_input.get())
+        self.audio_listener.start(transcriber)
+        
         self.transcribing = True
         self.control_btn.configure(text="Stop")
 
     def _stop_transcribing(self):
-        print("_stop_transcribing")
+        """Stop the transcription process."""
+        self.audio_listener.stop()
+        
         self.transcribing = False
         self.control_btn.configure(text="Start")
 

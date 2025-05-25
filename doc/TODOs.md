@@ -1,0 +1,1 @@
+- When stop listening - write remaining data into the output file
