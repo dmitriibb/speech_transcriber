@@ -144,7 +144,10 @@ class TranscriberApp:
 
         self.audio_listener = AudioListener(transcriber)
         self.audio_listener.set_input_device_name(self.selected_input.get())
-        self.audio_listener.start()
+        try:
+            self.audio_listener.start()
+        except Exception as ex:
+            tk.messagebox.showerror("Can't start audio listener", f"{ex}")
         
         self.transcribing = True
         self.status.set(statusTranscribing)
