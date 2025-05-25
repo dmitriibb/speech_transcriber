@@ -6,6 +6,9 @@ from threading import Thread, Event
 from src.transcriber import Transcriber
 
 
+
+
+
 class AudioListener:
     def __init__(self, transcriber: Transcriber, chunk_duration=5):
         self.transcriber = transcriber
@@ -15,6 +18,7 @@ class AudioListener:
         self.stop_event = Event()
         self.audio_queue = Queue()
         self.sample_rate = 16000  # Standard sample rate for speech
+        self.listen_thread = None
         
     def set_input_device(self, device_name):
         """Set the input device by name."""
@@ -39,39 +43,43 @@ class AudioListener:
             raise ValueError("Transcriber not set")
             
         self.stop_event.clear()
-        
-        # TO REFACTOR - move this function outside of the method.
-        def process_audio():
-            with sd.InputStream(
+                        
+        self.listen_thread = Thread(target=self._process_audio)
+        self.listen_thread.start()
+
+    def _process_audio(self):
+        with sd.InputStream(
                 device=self.device,
                 channels=1,
                 samplerate=self.sample_rate,
                 blocksize=int(self.sample_rate * self.chunk_duration),
                 callback=self._audio_callback
-            ):
-                while not self.stop_event.is_set():
-                    try:
-                        audio_chunk = self.audio_queue.get(timeout=1.0)
-                        self.transcriber.transcribe_async(audio_chunk)
-                        self.audio_queue.task_done()
-                    except Empty:
-                        continue  # No chunks to process, continue waiting
-                        
-        self.listen_thread = Thread(target=process_audio)
-        self.listen_thread.start()
+        ) as stream:
+            self.stream = stream
+            while not self.stop_event.is_set():
+                try:
+                    audio_chunk = self.audio_queue.get(timeout=1.0)
+                    self.transcriber.transcribe_async(audio_chunk)
+                    self.audio_queue.task_done()
+                except Empty:
+                    continue  # No chunks to process, continue waiting
         
     def stop(self):
-        """Stop listening to the audio input."""
         self.stop_event.set()
-
-        if hasattr(self, 'listen_thread'):
-            self.listen_thread.join()
-        # Clear the queue
-        while not self.audio_queue.empty():
-            self.audio_queue.get()
+        self._stop_listening()
 
     def _stop_listening(self):
-        # TO REFACTOR - need to stop listening self.device InputStream
+        if self.stream is not None:
+            try:
+                self.stream.stop()
+            except Exception as ex:
+                print(f"error - can't stop audio stream input: {ex}")
+
+        if self.listen_thread is not None:
+            self.listen_thread.join()
+            self.listen_thread = None
+
+        # send remaining audio chunks
         while not self.audio_queue.empty():
             audio_chunk = self.audio_queue.get()
             self.transcriber.transcribe_async(audio_chunk)

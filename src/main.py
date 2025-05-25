@@ -3,6 +3,9 @@ from enum import Enum
 from tkinter import ttk, filedialog, messagebox
 import sounddevice as sd
 import os
+
+from urllib3.filepost import writer
+
 from audio_listener import AudioListener
 from transcriber import Transcriber
 from output_writer import OutputWriter
@@ -113,7 +116,9 @@ class TranscriberApp:
             return
 
         # Configure components
-        output_writer = OutputWriter()
+        def writer_on_stop_callback():
+            self.status.set(statusReady)
+        output_writer = OutputWriter(writer_on_stop_callback)
         output_writer.set_output_directory(self.output_directory.get())
         output_writer.start_new_file()
 

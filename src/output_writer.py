@@ -2,11 +2,11 @@ import os
 from threading import Lock
 
 class OutputWriter:
-    def __init__(self):
-        """Initialize the OutputWriter."""
+    def __init__(self, on_stop_callback=None):
         self.output_dir = None
         self.current_file = None
         self._lock = Lock()
+        self._on_stop_callback = on_stop_callback
         
     def set_output_directory(self, directory):
         """
@@ -52,4 +52,5 @@ class OutputWriter:
         """Stop writing and close the current file."""
         with self._lock:
             self.current_file = None
-        # TO REFACTOR - send callback to main and change it's status to Ready
+            if self._on_stop_callback:
+                self._on_stop_callback()
