@@ -1,0 +1,6 @@
+pyaudio
+SpeechRecognition
+pocketsphinx
+git+https://github.com/openai/whisper.git
+torch
+tk
