@@ -7,11 +7,13 @@ import io
 import wave
 
 from src.output_writer import OutputWriter
+from src.constants import *
 
 
 class Transcriber:
-    def __init__(self, output_writer: OutputWriter):
+    def __init__(self, output_writer: OutputWriter, recognizer_name: str):
         self.output_writer = output_writer
+        self.recognizer_name = recognizer_name
         self.chunk_counter = 0
         self._lock = Lock()
         self._processing_queue = Queue()
@@ -57,23 +59,43 @@ class Transcriber:
         self._processing_queue.put(chunk_audio)
 
     def _transcribe(self, chunk_audio) -> str:
-        return self._transcribe_library(chunk_audio)
+        if self.recognizer_name == recogniserDummy:
+            return self._transcribe_dummy(chunk_audio)
+        elif self.recognizer_name == recogniserSphinx:
+            return self._transcribe_sphinx(chunk_audio)
+        elif self.recognizer_name == recogniserGoogleCloud:
+            return self._transcribe_google_cloud(chunk_audio)
+        else:
+            raise Exception(f"recogniser {self.recognizer_name} is not supported")
 
     def _transcribe_dummy(self, chunk_audio) -> str:
         return f"chunk: {self.chunk_counter}, size: {chunk_audio.nbytes} bytes"
 
-    def _transcribe_library(self, chunk_audio) -> str:
-        """Main transcription method that processes the audio chunk."""
+    def _transcribe_sphinx(self, chunk_audio) -> str:
         try:
-            # Convert numpy array to WAV format
             wav_bytes = self._numpy_to_wav(chunk_audio)
-
-            # Convert to AudioData that speech_recognition can use
             audio_data = sr.AudioData(wav_bytes, sample_rate=16000, sample_width=2)
 
-            # Perform the transcription
             try:
                 text = self._recognizer.recognize_sphinx(audio_data)
+                return text
+            except sr.UnknownValueError:
+                return ""  # No speech detected
+            except sr.RequestError as e:
+                print(f"Error during transcription: {e}")
+                return ""
+
+        except Exception as e:
+            print(f"Error processing audio chunk: {e}")
+            return ""
+
+    def _transcribe_google_cloud(self, chunk_audio) -> str:
+        try:
+            wav_bytes = self._numpy_to_wav(chunk_audio)
+            audio_data = sr.AudioData(wav_bytes, sample_rate=16000, sample_width=2)
+
+            try:
+                text = self._recognizer.recognize_google(audio_data)
                 return text
             except sr.UnknownValueError:
                 return ""  # No speech detected
