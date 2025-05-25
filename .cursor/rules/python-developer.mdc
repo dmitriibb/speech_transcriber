@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Implement modular design with distinct files for models, services, controllers, and utilities.
+
+- Ensure a clear project structure with separate directories for source code (src), tests (tests), documentation (docs), and configuration (config).

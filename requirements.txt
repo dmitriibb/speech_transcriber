@@ -1,6 +1,2 @@
-pyaudio
-SpeechRecognition
-pocketsphinx
-git+https://github.com/openai/whisper.git
-torch
-tk
+sounddevice>=0.4.6
+PyAudio>=0.2.14 
