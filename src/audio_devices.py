@@ -51,24 +51,24 @@ class SystemSoundRecorder:
 
         # Record
         print("Recording...")
-        while not self._should_stop:
+        # while not self._should_stop:
             # recording = sd.rec(int(self.duration * self.samplerate), samplerate=self.samplerate,channels=2, device=self.device_id, blocking=True)
             # recording = sd.rec(int(self.duration * self.samplerate), samplerate=self.samplerate, channels=2, device=self.device_id, dtype='float32')
             # sd.wait()
             # self.callback(recording, None, None, None)
 
-            try:
-                with sd.InputStream(device=self.device_id,
-                                    channels=self.channels,
-                                    samplerate=self.samplerate,
-                                    blocksize=self.blocksize,
-                                    callback=self.callback) as stream:
-                    while not self._should_stop:
-                        sd.sleep(100)  # Sleep to prevent busy waiting
-            except Exception as e:
-                print(f"Error in system sound recording: {e}")
+        try:
+            with sd.InputStream(device=self.device_id,
+                                channels=self.channels,
+                                samplerate=self.samplerate,
+                                blocksize=self.blocksize,
+                                callback=self.callback) as stream:
+                while not self._should_stop:
+                    sd.sleep(100)  # Sleep to prevent busy waiting
+        except Exception as e:
+            print(f"Error in system sound recording: {e}")
 
-        print("Recording complete.")
+        # print("Recording complete.")
 
     def stop(self):
         self._should_stop = True

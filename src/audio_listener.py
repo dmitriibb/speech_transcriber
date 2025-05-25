@@ -89,7 +89,7 @@ class AudioListener:
             self.device_wrapper.device_id,
             channels=2,
             samplerate=self.device_wrapper.device_info['default_samplerate'],
-            blocksize=int(self.sample_rate * self.chunk_duration),
+            blocksize=int(self.device_wrapper.device_info['default_samplerate'] * self.chunk_duration),
             duration=self.chunk_duration,
             callback=self._audio_callback
         )
@@ -105,11 +105,11 @@ class AudioListener:
             except Exception as ex:
                 print(f"error - can't stop audio stream input: {ex}")
 
-        # if self.recorder is not None:
-        #     try:
-        #         self.recorder.stop()
-        #     except Exception as ex:
-        #         print(f"error - can't stop recording system output: {ex}")
+        if self.recorder is not None:
+            try:
+                self.recorder.stop()
+            except Exception as ex:
+                print(f"error - can't stop recording system output: {ex}")
 
         if self.listen_thread is not None:
             self.listen_thread.join()
