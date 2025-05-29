@@ -3,6 +3,7 @@ from threading import Thread
 import sounddevice as sd
 
 from src.AudioDeviceWrapper import AudioDeviceWrapper
+from src.logger import logger
 
 
 def get_devices_names(include_output_devices = False):
@@ -18,8 +19,6 @@ def get_devices_names(include_output_devices = False):
 def get_device_by_name(name: str) -> AudioDeviceWrapper:
     devices = sd.query_devices()
     for device in devices:
-        if device['max_input_channels'] == 0:
-            continue
         wrapper = AudioDeviceWrapper(device)
         if wrapper.get_name() == name:
             return wrapper
@@ -71,7 +70,7 @@ class SystemSoundRecorder:
                 while not self._should_stop:
                     sd.sleep(100)  # Sleep to prevent busy waiting
         except Exception as e:
-            print(f"Error in system sound recording: {e}")
+            logger.log(f"Error in system sound recording: {e}")
 
         # print("Recording complete.")
 

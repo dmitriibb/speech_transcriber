@@ -7,6 +7,7 @@ import io
 import wave
 
 from src.configs import TranscriberConfig
+from src.logger import logger
 from src.output_writer import OutputWriter
 from src.constants import *
 
@@ -83,11 +84,11 @@ class Transcriber:
             except sr.UnknownValueError:
                 return ""  # No speech detected
             except sr.RequestError as e:
-                print(f"Error during transcription: {e}")
+                logger.log(f"Error during transcription: {e}")
                 return ""
 
         except Exception as e:
-            print(f"Error processing audio chunk: {e}")
+            logger.log(f"Error processing audio chunk: {e}")
             return ""
 
     def _transcribe_google_cloud(self, chunk_audio) -> str:
@@ -101,11 +102,11 @@ class Transcriber:
             except sr.UnknownValueError:
                 return ""  # No speech detected
             except sr.RequestError as e:
-                print(f"Error during transcription: {e}")
+                logger.log(f"Error during transcription: {e}")
                 return ""
 
         except Exception as e:
-            print(f"Error processing audio chunk: {e}")
+            logger.log(f"Error processing audio chunk: {e}")
             return ""
 
     def _numpy_to_wav(self, audio_chunk: np.ndarray) -> bytes:

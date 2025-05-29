@@ -10,6 +10,7 @@ from audio_listener import AudioListener
 from src.audio_devices import get_devices_names
 from src.configs import OutputConfig, TranscriberConfig, AudioListenerConfig
 from src.constants import *
+from src.logger import Logger, logger
 from transcriber import Transcriber
 from output_writer import OutputWriter
 
@@ -19,10 +20,11 @@ class TranscriberApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Speech Transcriber")
-        self.root.geometry("600x400")
+        self.root.geometry("600x700")
         
         # State variables
         self.transcribing = False
+        self.logger = Logger()
 
         default_directory = os.path.dirname(os.path.abspath(__file__))
         head, tail = os.path.split(default_directory)
@@ -33,6 +35,7 @@ class TranscriberApp:
         self.selected_recognizer = tk.StringVar()
         self.status = tk.StringVar()
         self.include_output_devices = tk.BooleanVar(value=False)
+        self.chunk_duration = tk.StringVar(value="5")
 
         self.audio_listener : AudioListener = None
         
@@ -48,6 +51,7 @@ class TranscriberApp:
         self._recogniser_widget()
         self._status_widget()
         self._start_button_widget()
+        self._logs_widget()
 
 
     def _audio_source_widget(self):
@@ -98,13 +102,39 @@ class TranscriberApp:
         recogniser_frame = ttk.LabelFrame(self.root, text="Speech recognition", padding="10")
         recogniser_frame.pack(fill="x", padx=10, pady=5)
 
+        # Recognizer dropdown
         recogniser_dropdown = ttk.Combobox(
             recogniser_frame,
             textvariable=self.selected_recognizer,
             state="readonly"
         )
         recogniser_dropdown['values'] = [recogniserDummy, recogniserSphinx, recogniserGoogleCloud]
-        recogniser_dropdown.pack(fill="x")
+        recogniser_dropdown.pack(fill="x", pady=(0, 5))
+
+        # Chunk duration input
+        duration_frame = ttk.Frame(recogniser_frame)
+        duration_frame.pack(fill="x", pady=(5, 0))
+
+        duration_label = ttk.Label(duration_frame, text="Chunk duration (sec):")
+        duration_label.pack(side="left", padx=(0, 5))
+
+        def validate_numeric(P):
+            if P == "": return True
+            try:
+                float(P)
+                return True
+            except ValueError:
+                return False
+
+        vcmd = (self.root.register(validate_numeric), '%P')
+        duration_entry = ttk.Entry(
+            duration_frame,
+            textvariable=self.chunk_duration,
+            width=10,
+            validate="key",
+            validatecommand=vcmd
+        )
+        duration_entry.pack(side="left")
 
     def _status_widget(self):
         status_frame = ttk.LabelFrame(self.root, text="Status", padding="10")
@@ -122,7 +152,47 @@ class TranscriberApp:
             command=self._toggle_transcription
         )
         self.control_btn.pack(pady=20)
-        
+
+    def _logs_widget(self):
+        logs_frame = ttk.LabelFrame(self.root, text="Logs", padding="10")
+        logs_frame.pack(fill="x", padx=10, pady=5)
+
+        # Create a frame to hold both the text widget and scrollbar
+        text_frame = ttk.Frame(logs_frame)
+        text_frame.pack(fill="both", expand=True)
+
+        # Create the text widget
+        self.logs_text = tk.Text(
+            text_frame,
+            height=7,
+            wrap=tk.WORD,
+            state="disabled"
+        )
+        self.logs_text.pack(side="left", fill="both", expand=True)
+
+        # Create the scrollbar
+        scrollbar = ttk.Scrollbar(
+            text_frame,
+            orient="vertical",
+            command=self.logs_text.yview
+        )
+        scrollbar.pack(side="right", fill="y")
+
+        # Configure the text widget to use the scrollbar
+        self.logs_text.configure(yscrollcommand=scrollbar.set)
+
+        def log(message):
+            self.logs_text.configure(state="normal")
+            self.logs_text.insert("end", f"{message}\n")
+            self.logs_text.see("end")  # Auto-scroll to the bottom
+            self.logs_text.configure(state="disabled")
+        logger.set_log_func(log)
+        self.log_all_devices()
+
+        def show_error(message):
+            tk.messagebox.showerror("Error", message)
+        logger.set_show_error_func(show_error)
+
     def _get_input_devices(self):
         return get_devices_names(self.include_output_devices.get())
 
@@ -152,33 +222,35 @@ class TranscriberApp:
 
     def _start_transcribing(self):
         if not self.selected_input.get():
-            tk.messagebox.showerror("Error", "Please select an input source")
+            logger.show_error("Please select an input source")
             return
             
         if not os.path.exists(self.output_directory.get()):
-            tk.messagebox.showerror("Error", "Please select a valid output directory")
+            logger.show_error("Please select a valid output directory")
             return
 
-        # Configure components
-        def writer_on_stop_callback():
-            self.status.set(statusReady)
-        output_config = OutputConfig(self.output_directory.get())
-        output_writer = OutputWriter(output_config, writer_on_stop_callback)
-        output_writer.start_new_file()
-
-        transcriber_config = TranscriberConfig(self.selected_recognizer.get())
-        transcriber = Transcriber(output_writer, transcriber_config)
-
-        listener_config = AudioListenerConfig(
-            audio_device_name=self.selected_input.get(),
-            chunk_duration=5
-        )
-        self.audio_listener = AudioListener(transcriber, listener_config)
-
         try:
+            # Configure components
+            def writer_on_stop_callback():
+                self.status.set(statusReady)
+            output_config = OutputConfig(self.output_directory.get())
+            output_writer = OutputWriter(output_config, writer_on_stop_callback)
+            output_writer.start_new_file()
+
+            transcriber_config = TranscriberConfig(self.selected_recognizer.get())
+            transcriber = Transcriber(output_writer, transcriber_config)
+            transcriber.app = self  # Set reference to main app for logging
+
+            listener_config = AudioListenerConfig(
+                audio_device_name=self.selected_input.get(),
+                chunk_duration=int(self.chunk_duration.get())
+            )
+            self.audio_listener = AudioListener(transcriber, listener_config)
+            self.audio_listener.app = self  # Set reference to main app for logging
+
             self.audio_listener.start()
         except Exception as ex:
-            tk.messagebox.showerror("Can't start audio listener", f"{ex}")
+            logger.show_error(f"Can't start audio listener: {ex}")
             self._stop_transcribing()
             self.status.set(statusReady)
             return
@@ -196,15 +268,14 @@ class TranscriberApp:
 
         self.control_btn.configure(text="Start")
 
+    def log_all_devices(self):
+        hostapis = sd.query_hostapis()
+        for i, h in enumerate(hostapis):
+            logger.log(f"{i}: {h['name']}")
+        for i, dev in enumerate(sd.query_devices()):
+            logger.log(f"{i}: {dev['name']} ({dev['hostapi']})")
 
 def main():
-    hostapis = sd.query_hostapis()
-    for i, h in enumerate(hostapis):
-        print(f"{i}: {h['name']}")
-        #
-    for i, dev in enumerate(sd.query_devices()):
-        print(f"{i}: {dev['name']} ({dev['hostapi']})")
-
     root = tk.Tk()
     app = TranscriberApp(root)
     root.mainloop()

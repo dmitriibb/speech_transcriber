@@ -12,7 +12,6 @@ class OutputWriter:
         self._on_stop_callback = on_stop_callback
         
     def _get_next_file_number(self):
-        """Get the next available file number for transcription file."""
         existing_files = [f for f in os.listdir(self.output_dir) 
                          if f.startswith("transcription-") and f.endswith(".txt")]
         if not existing_files:
@@ -22,7 +21,6 @@ class OutputWriter:
         return max(numbers) + 1
         
     def start_new_file(self):
-        """Create a new transcription file when starting transcription."""
         if self.output_dir is None:
             raise ValueError("Output directory not set")
             
@@ -43,8 +41,7 @@ class OutputWriter:
                 f.write(text + "\n")
 
     def stop(self):
-        """Stop writing and close the current file."""
         with self._lock:
-            self.current_file = None
+            # self.current_file = None
             if self._on_stop_callback:
                 self._on_stop_callback()

@@ -7,6 +7,7 @@ from src.AudioDeviceWrapper import AudioDeviceWrapper
 from src.audio_devices import get_device_by_name, SystemSoundRecorder
 from src.configs import AudioListenerConfig
 from src.constants import deviceTypeInput
+from src.logger import Logger, logger
 from src.transcriber import Transcriber
 
 
@@ -32,6 +33,7 @@ class AudioListener:
                         
         self.listen_thread = Thread(target=self._process_audio)
         self.listen_thread.start()
+        logger.log(f"Start listening {self.device_wrapper.get_name()}")
 
     def _process_audio(self):
         if self.device_wrapper.type == deviceTypeInput:
@@ -41,8 +43,8 @@ class AudioListener:
 
     def _audio_callback(self, data, frames, time, status):
         """Callback function for the audio stream."""
-        if status:
-            print(f'Audio callback status: {status}')
+        if status and self.app:
+            logger.log(f'Audio callback status: {status}')
         if not self.stop_event.is_set():
             self.audio_queue.put(data.copy())
 
@@ -98,14 +100,14 @@ class AudioListener:
             try:
                 self.stream.stop()
             except Exception as ex:
-                print(f"error - can't stop audio stream input: {ex}")
+                logger.log(f"Error - can't stop audio stream input: {ex}")
 
         if hasattr(self, 'recorder'):
             if self.recorder is not None:
                 try:
                     self.recorder.stop()
                 except Exception as ex:
-                    print(f"error - can't stop recording system output: {ex}")
+                    logger.log(f"Error - can't stop recording system output: {ex}")
 
         if self.listen_thread is not None:
             self.listen_thread.join()
