@@ -32,6 +32,7 @@ class TranscriberApp:
         self.output_directory = tk.StringVar(value=default_directory)
         self.selected_recognizer = tk.StringVar()
         self.status = tk.StringVar()
+        self.include_output_devices = tk.BooleanVar(value=False)
 
         self.audio_listener : AudioListener = None
         
@@ -53,13 +54,27 @@ class TranscriberApp:
         input_frame = ttk.LabelFrame(self.root, text="Audio Input Source", padding="10")
         input_frame.pack(fill="x", padx=10, pady=5)
 
-        input_dropdown = ttk.Combobox(
-            input_frame,
+        # Create a container frame for dropdown and checkbox
+        container = ttk.Frame(input_frame)
+        container.pack(fill="x")
+
+        # Add the dropdown on the left side
+        self.audio_device_dropdown = ttk.Combobox(
+            container,
             textvariable=self.selected_input,
             state="readonly"
         )
-        input_dropdown['values'] = self._get_input_devices()
-        input_dropdown.pack(fill="x")
+        self.audio_device_dropdown['values'] = self._get_input_devices()
+        self.audio_device_dropdown.pack(side="left", fill="x", expand=True)
+
+        # Add the checkbox on the right side
+        include_output_checkbox = ttk.Checkbutton(
+            container,
+            text="Include output devices",
+            variable=self.include_output_devices,
+            command=self._refresh_input_devices
+        )
+        include_output_checkbox.pack(side="right", padx=(5, 0))
 
     def _output_file_widget(self):
         output_frame = ttk.LabelFrame(self.root, text="Output Directory", padding="10")
@@ -109,8 +124,18 @@ class TranscriberApp:
         self.control_btn.pack(pady=20)
         
     def _get_input_devices(self):
-        return get_devices_names()
-        
+        return get_devices_names(self.include_output_devices.get())
+
+    def _refresh_input_devices(self):
+        current_selection = self.selected_input.get()
+        new_values = self._get_input_devices()
+        self.audio_device_dropdown['values'] = new_values
+
+        if current_selection in new_values:
+            self.selected_input.set(current_selection)
+        else:
+            self.selected_input.set('')
+
     def _choose_directory(self):
         directory = filedialog.askdirectory(
             initialdir=self.output_directory.get(),
