@@ -25,39 +25,33 @@ class Transcriber:
         self._start_processing_thread()
         
     def _start_processing_thread(self):
-        """Start the background thread for processing audio chunks."""
         self._should_stop = False
         self._processing_thread = Thread(target=self._process_chunks, daemon=True)
         self._processing_thread.start()
+        logger.log("Transcriber start")
         
     def _process_chunks(self):
-        """Background thread function to process audio chunks."""
         while not self._should_stop:
             self._process_chunk_from_queue()
 
     def _process_chunk_from_queue(self):
         try:
-            chunk_audio = self._processing_queue.get(timeout=1.0)  # 1 second timeout
+            chunk_audio = self._processing_queue.get(timeout=1.0)
             with self._lock:
+                chunk_transcribed = self._transcribe(chunk_audio)
                 self.chunk_counter += 1
-            chunk_transcribed = self._transcribe(chunk_audio)
-            if chunk_transcribed:  # Only write non-empty transcriptions
+                logger.log(f"Transcriber chunk {self.chunk_counter}")
                 self.output_writer.write(chunk_transcribed)
-            self._processing_queue.task_done()
+                self._processing_queue.task_done()
         except Empty:
             pass # No chunks to process, continue waiting
         
     def transcribe(self, chunk_audio):
-        """Synchronous transcription - mainly for testing purposes."""
         chunk_transcribed = self._transcribe(chunk_audio)
         if chunk_transcribed:
             self.output_writer.write(chunk_transcribed)
 
     def transcribe_async(self, chunk_audio):
-        """
-        Non-blocking transcription of audio chunk.
-        Puts the chunk into a queue for background processing.
-        """
         self._processing_queue.put(chunk_audio)
 
     def _transcribe(self, chunk_audio) -> str:

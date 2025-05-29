@@ -58,18 +58,18 @@ if %ERRORLEVEL% NEQ 0 (
     goto error
 )
 
-echo Installing PyAudio from wheel...
-if exist "wheels\pymol-3.1.0-cp310-cp310-win_amd64.whl" (
-    pip install "wheels\pymol-3.1.0-cp310-cp310-win_amd64.whl"
-) else if exist "wheels\PyAudio-0.2.11-cp310-cp310-win32.whl" (
-    pip install "wheels\PyAudio-0.2.11-cp310-cp310-win32.whl"
-) else (
-    echo Error: PyAudio wheel not found in wheels directory!
-    echo Please download the appropriate wheel from:
-    echo https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
-    echo and place it in the wheels directory.
-    goto error
-)
+@REM echo Installing PyAudio from wheel...
+@REM if exist "wheels\pymol-3.1.0-cp310-cp310-win_amd64.whl" (
+@REM     pip install "wheels\pymol-3.1.0-cp310-cp310-win_amd64.whl"
+@REM ) else if exist "wheels\PyAudio-0.2.11-cp310-cp310-win32.whl" (
+@REM     pip install "wheels\PyAudio-0.2.11-cp310-cp310-win32.whl"
+@REM ) else (
+@REM     echo Error: PyAudio wheel not found in wheels directory!
+@REM     echo Please download the appropriate wheel from:
+@REM     echo https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
+@REM     echo and place it in the wheels directory.
+@REM     goto error
+@REM )
 
 echo Installing sounddevice...
 pip install sounddevice==0.4.6

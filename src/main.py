@@ -20,7 +20,7 @@ class TranscriberApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Speech Transcriber")
-        self.root.geometry("600x700")
+        self.root.geometry("600x600")
         
         # State variables
         self.transcribing = False
@@ -187,7 +187,7 @@ class TranscriberApp:
             self.logs_text.see("end")  # Auto-scroll to the bottom
             self.logs_text.configure(state="disabled")
         logger.set_log_func(log)
-        self.log_all_devices()
+        # self.log_all_devices()
 
         def show_error(message):
             tk.messagebox.showerror("Error", message)

@@ -21,6 +21,7 @@ class AudioListener:
         self.audio_queue = Queue()
         self.sample_rate = 16000  # Standard sample rate for speech
         self.listen_thread = None
+        self.chunk_counter = 0
             
     def start(self):
         if self.device_wrapper is None:
@@ -62,6 +63,8 @@ class AudioListener:
                     audio_chunk = self.audio_queue.get(timeout=1.0)
                     self.transcriber.transcribe_async(audio_chunk)
                     self.audio_queue.task_done()
+                    self.chunk_counter += 1
+                    logger.log(f"AudioListener chunk {self.chunk_counter}")
                 except Empty:
                     continue  # No chunks to process, continue waiting
 
@@ -80,6 +83,8 @@ class AudioListener:
                     audio_chunk = self.audio_queue.get(timeout=1.0)
                     self.transcriber.transcribe_async(audio_chunk)
                     self.audio_queue.task_done()
+                    self.chunk_counter += 1
+                    logger.log(f"AudioListener chunk {self.chunk_counter}")
                 except Empty:
                     continue  # No chunks to process, continue waiting
         # self.recorder = SystemSoundRecorder(
