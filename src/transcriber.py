@@ -6,14 +6,15 @@ import numpy as np
 import io
 import wave
 
+from src.configs import TranscriberConfig
 from src.output_writer import OutputWriter
 from src.constants import *
 
 
 class Transcriber:
-    def __init__(self, output_writer: OutputWriter, recognizer_name: str):
+    def __init__(self, output_writer: OutputWriter, config: TranscriberConfig):
         self.output_writer = output_writer
-        self.recognizer_name = recognizer_name
+        self.recognizer_name = config.recogniser_name
         self.chunk_counter = 0
         self._lock = Lock()
         self._processing_queue = Queue()

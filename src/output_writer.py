@@ -1,21 +1,15 @@
 import os
 from threading import Lock
 
+from src.configs import OutputConfig
+
+
 class OutputWriter:
-    def __init__(self, on_stop_callback=None):
-        self.output_dir = None
+    def __init__(self, config: OutputConfig, on_stop_callback=None):
+        self.output_dir = config.output_dir
         self.current_file = None
         self._lock = Lock()
         self._on_stop_callback = on_stop_callback
-        
-    def set_output_directory(self, directory):
-        """
-        Set the output directory for transcription files.
-        
-        Args:
-            directory (str): Path to the output directory
-        """
-        self.output_dir = directory
         
     def _get_next_file_number(self):
         """Get the next available file number for transcription file."""

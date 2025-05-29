@@ -8,6 +8,7 @@ from urllib3.filepost import writer
 
 from audio_listener import AudioListener
 from src.audio_devices import get_devices_names
+from src.configs import OutputConfig, TranscriberConfig, AudioListenerConfig
 from src.constants import *
 from transcriber import Transcriber
 from output_writer import OutputWriter
@@ -23,8 +24,12 @@ class TranscriberApp:
         # State variables
         self.transcribing = False
 
+        default_directory = os.path.dirname(os.path.abspath(__file__))
+        head, tail = os.path.split(default_directory)
+        if tail == "src":
+            default_directory = os.path.join(head, "output")
         self.selected_input = tk.StringVar()
-        self.output_directory = tk.StringVar(value=os.path.dirname(os.path.abspath(__file__)))
+        self.output_directory = tk.StringVar(value=default_directory)
         self.selected_recognizer = tk.StringVar()
         self.status = tk.StringVar()
 
@@ -107,7 +112,6 @@ class TranscriberApp:
         return get_devices_names()
         
     def _choose_directory(self):
-        """Open directory chooser dialog."""
         directory = filedialog.askdirectory(
             initialdir=self.output_directory.get(),
             title="Select Output Directory"
@@ -116,15 +120,12 @@ class TranscriberApp:
             self.output_directory.set(directory)
             
     def _toggle_transcription(self):
-        """Toggle between Start and Stop states."""
         if self.transcribing:
             self._stop_transcribing()
         else:
             self._start_transcribing()
 
     def _start_transcribing(self):
-        """Start the transcription process."""
-        # Validate input source and output directory
         if not self.selected_input.get():
             tk.messagebox.showerror("Error", "Please select an input source")
             return
@@ -136,18 +137,26 @@ class TranscriberApp:
         # Configure components
         def writer_on_stop_callback():
             self.status.set(statusReady)
-        output_writer = OutputWriter(writer_on_stop_callback)
-        output_writer.set_output_directory(self.output_directory.get())
+        output_config = OutputConfig(self.output_directory.get())
+        output_writer = OutputWriter(output_config, writer_on_stop_callback)
         output_writer.start_new_file()
 
-        transcriber = Transcriber(output_writer, self.selected_recognizer.get())
+        transcriber_config = TranscriberConfig(self.selected_recognizer.get())
+        transcriber = Transcriber(output_writer, transcriber_config)
 
-        self.audio_listener = AudioListener(transcriber)
-        self.audio_listener.set_input_device_name(self.selected_input.get())
+        listener_config = AudioListenerConfig(
+            audio_device_name=self.selected_input.get(),
+            chunk_duration=5
+        )
+        self.audio_listener = AudioListener(transcriber, listener_config)
+
         try:
             self.audio_listener.start()
         except Exception as ex:
             tk.messagebox.showerror("Can't start audio listener", f"{ex}")
+            self._stop_transcribing()
+            self.status.set(statusReady)
+            return
         
         self.transcribing = True
         self.status.set(statusTranscribing)
@@ -158,6 +167,7 @@ class TranscriberApp:
         self.transcribing = False
         self.status.set(statusFinishing)
         self.audio_listener.stop()
+        self.audio_listener = None
 
         self.control_btn.configure(text="Start")
 

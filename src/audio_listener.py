@@ -5,24 +5,21 @@ from threading import Thread, Event
 
 from src.AudioDeviceWrapper import AudioDeviceWrapper
 from src.audio_devices import get_device_by_name, SystemSoundRecorder
+from src.configs import AudioListenerConfig
 from src.constants import deviceTypeInput
 from src.transcriber import Transcriber
 
 
 class AudioListener:
-    def __init__(self, transcriber: Transcriber, chunk_duration=5):
+    def __init__(self, transcriber: Transcriber, config: AudioListenerConfig):
         self.transcriber = transcriber
-        self.chunk_duration = chunk_duration
-        self.device_wrapper: AudioDeviceWrapper = None
+        self.chunk_duration = config.chunk_duration
+        self.device_wrapper = get_device_by_name(config.audio_device_name)
         self.stream = None
         self.stop_event = Event()
         self.audio_queue = Queue()
         self.sample_rate = 16000  # Standard sample rate for speech
         self.listen_thread = None
-        
-    def set_input_device_name(self, device_name):
-        self.device_wrapper = get_device_by_name(device_name)
-
             
     def start(self):
         if self.device_wrapper is None:
@@ -51,7 +48,7 @@ class AudioListener:
 
     def _process_audio_input(self):
         with sd.InputStream(
-                device=self.device_wrapper.device,
+                device=self.device_wrapper.device_id,
                 channels=1,
                 samplerate=self.sample_rate,
                 blocksize=int(self.sample_rate * self.chunk_duration),
@@ -68,29 +65,29 @@ class AudioListener:
 
     def _process_audio_output(self):
         # This doesn't work
-        # with sd.OutputStream(
-        #         device=self.device_wrapper.device,
-        #         channels=1,
-        #         samplerate=self.device_wrapper.device_info['default_samplerate'],
-        #         blocksize=int(self.device_wrapper.device_info['default_samplerate'] * self.chunk_duration),
-        #         callback=self._audio_callback
-        # ) as stream:
-        #     self.stream = stream
-        #     while not self.stop_event.is_set():
-        #         try:
-        #             audio_chunk = self.audio_queue.get(timeout=1.0)
-        #             self.transcriber.transcribe_async(audio_chunk)
-        #             self.audio_queue.task_done()
-        #         except Empty:
-        #             continue  # No chunks to process, continue waiting
-        self.recorder = SystemSoundRecorder(
-            self.device_wrapper.device_id,
-            channels=2,
-            samplerate=self.device_wrapper.device_info['default_samplerate'],
-            blocksize=int(self.device_wrapper.device_info['default_samplerate'] * self.chunk_duration),
-            duration=self.chunk_duration,
-            callback=self._audio_callback
-        )
+        with sd.OutputStream(
+                device=self.device_wrapper.device_id,
+                channels=2,
+                samplerate=self.device_wrapper.device['default_samplerate'],
+                blocksize=int(self.device_wrapper.device['default_samplerate'] * self.chunk_duration),
+                callback=self._audio_callback
+        ) as stream:
+            self.stream = stream
+            while not self.stop_event.is_set():
+                try:
+                    audio_chunk = self.audio_queue.get(timeout=1.0)
+                    self.transcriber.transcribe_async(audio_chunk)
+                    self.audio_queue.task_done()
+                except Empty:
+                    continue  # No chunks to process, continue waiting
+        # self.recorder = SystemSoundRecorder(
+        #     self.device_wrapper.device_id,
+        #     channels=2,
+        #     samplerate=self.device_wrapper.device_info['default_samplerate'],
+        #     blocksize=int(self.device_wrapper.device_info['default_samplerate'] * self.chunk_duration),
+        #     duration=self.chunk_duration,
+        #     callback=self._audio_callback
+        # )
         
     def stop(self):
         self.stop_event.set()

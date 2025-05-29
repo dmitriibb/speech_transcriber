@@ -5,11 +5,11 @@ import sounddevice as sd
 from src.AudioDeviceWrapper import AudioDeviceWrapper
 
 
-def get_devices_names():
+def get_devices_names(include_output_devices = False):
     devices = sd.query_devices()
     names = []
     for device in devices:
-        if device['max_input_channels'] == 0:
+        if device['max_input_channels'] == 0 and not include_output_devices:
             continue
         wrapper = AudioDeviceWrapper(device)
         names.append(wrapper.get_name())
@@ -25,6 +25,7 @@ def get_device_by_name(name: str) -> AudioDeviceWrapper:
             return wrapper
     raise Exception(f"can't find audio device {name}")
 
+# Below is attempt to record sound from output audio device. Unfortunately it didn't work in Windows
 def find_loopback_device():
     devices = sd.query_devices()
     for idx, device in enumerate(devices):
