@@ -3,7 +3,7 @@ import numpy as np
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from src.AudioDeviceWrapper import AudioDeviceWrapper
+from src.audio_device_wrapper import AudioDeviceWrapper
 from src.audio_devices import get_device_by_name, SystemSoundRecorder
 from src.configs import AudioListenerConfig
 from src.constants import deviceTypeInput

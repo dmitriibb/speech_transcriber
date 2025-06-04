@@ -2,7 +2,7 @@ from threading import Thread
 
 import sounddevice as sd
 
-from src.AudioDeviceWrapper import AudioDeviceWrapper
+from src.audio_device_wrapper import AudioDeviceWrapper
 from src.logger import logger
 
 

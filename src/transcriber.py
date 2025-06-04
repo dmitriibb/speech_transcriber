@@ -5,6 +5,7 @@ import speech_recognition as sr
 import numpy as np
 import io
 import wave
+import whisper
 
 from src.configs import TranscriberConfig
 from src.logger import logger
@@ -22,6 +23,7 @@ class Transcriber:
         self._processing_thread: Optional[Thread] = None
         self._should_stop = False
         self._recognizer = sr.Recognizer()
+        self._whisper_model = None
         self._start_processing_thread()
         
     def _start_processing_thread(self):
@@ -61,6 +63,8 @@ class Transcriber:
             return self._transcribe_sphinx(chunk_audio)
         elif self.recognizer_name == recogniserGoogleCloud:
             return self._transcribe_google_cloud(chunk_audio)
+        elif self.recognizer_name == recogniserWhisper:
+            return self._transcribe_whisper(chunk_audio)
         else:
             raise Exception(f"recogniser {self.recognizer_name} is not supported")
 
@@ -101,6 +105,34 @@ class Transcriber:
 
         except Exception as e:
             logger.log(f"Error processing audio chunk: {e}")
+            return ""
+
+    def _transcribe_whisper(self, chunk_audio) -> str:
+        try:
+            if self._whisper_model is None:
+                logger.log("Loading Whisper model...")
+                self._whisper_model = whisper.load_model("base")
+                logger.log("Whisper model loaded")
+
+            # Convert numpy array to temporary WAV file
+            wav_bytes = self._numpy_to_wav(chunk_audio)
+            
+            # Save to a temporary file since Whisper works with files
+            temp_file = "temp_chunk.wav"
+            with open(temp_file, "wb") as f:
+                f.write(wav_bytes)
+            
+            # Transcribe using Whisper
+            result = self._whisper_model.transcribe(temp_file)
+            
+            # Clean up temporary file
+            import os
+            os.remove(temp_file)
+            
+            return result["text"].strip()
+
+        except Exception as e:
+            logger.log(f"Error in Whisper transcription: {e}")
             return ""
 
     def _numpy_to_wav(self, audio_chunk: np.ndarray) -> bytes:

@@ -25,6 +25,7 @@ class TranscriberApp:
         # State variables
         self.transcribing = False
         self.logger = Logger()
+        self.ai_enabled = tk.BooleanVar(value=False)
 
         default_directory = os.path.dirname(os.path.abspath(__file__))
         head, tail = os.path.split(default_directory)
@@ -52,7 +53,6 @@ class TranscriberApp:
         self._status_widget()
         self._start_button_widget()
         self._logs_widget()
-
 
     def _audio_source_widget(self):
         input_frame = ttk.LabelFrame(self.root, text="Audio Input Source", padding="10")
@@ -102,13 +102,24 @@ class TranscriberApp:
         recogniser_frame = ttk.LabelFrame(self.root, text="Speech recognition", padding="10")
         recogniser_frame.pack(fill="x", padx=10, pady=5)
 
+        # AI Section
+        ai_frame = ttk.Frame(recogniser_frame)
+        ai_frame.pack(fill="x", pady=(0, 5))
+        
+        ai_toggle = ttk.Checkbutton(
+            ai_frame,
+            text="Enable AI",
+            variable=self.ai_enabled
+        )
+        ai_toggle.pack(side="left")
+
         # Recognizer dropdown
         recogniser_dropdown = ttk.Combobox(
             recogniser_frame,
             textvariable=self.selected_recognizer,
             state="readonly"
         )
-        recogniser_dropdown['values'] = [recogniserDummy, recogniserSphinx, recogniserGoogleCloud]
+        recogniser_dropdown['values'] = [recogniserDummy, recogniserSphinx, recogniserGoogleCloud, recogniserWhisper]
         recogniser_dropdown.pack(fill="x", pady=(0, 5))
 
         # Chunk duration input
@@ -221,6 +232,7 @@ class TranscriberApp:
             self._start_transcribing()
 
     def _start_transcribing(self):
+        """Start the transcription process."""
         if not self.selected_input.get():
             logger.show_error("Please select an input source")
             return
@@ -230,34 +242,29 @@ class TranscriberApp:
             return
 
         try:
-            # Configure components
+            chunk_duration = int(self.chunk_duration.get())
+            audio_listener_config = AudioListenerConfig(self.selected_input.get(), chunk_duration)
+            transcriber_config = TranscriberConfig(self.selected_recognizer.get(), self.ai_enabled.get())
+            output_config = OutputConfig(self.output_directory.get())
+
             def writer_on_stop_callback():
                 self.status.set(statusReady)
-            output_config = OutputConfig(self.output_directory.get())
             output_writer = OutputWriter(output_config, writer_on_stop_callback)
             output_writer.start_new_file()
 
-            transcriber_config = TranscriberConfig(self.selected_recognizer.get())
             transcriber = Transcriber(output_writer, transcriber_config)
             transcriber.app = self  # Set reference to main app for logging
 
-            listener_config = AudioListenerConfig(
-                audio_device_name=self.selected_input.get(),
-                chunk_duration=int(self.chunk_duration.get())
-            )
-            self.audio_listener = AudioListener(transcriber, listener_config)
+            self.audio_listener = AudioListener(transcriber, audio_listener_config)
             self.audio_listener.app = self  # Set reference to main app for logging
 
             self.audio_listener.start()
-        except Exception as ex:
-            logger.show_error(f"Can't start audio listener: {ex}")
-            self._stop_transcribing()
-            self.status.set(statusReady)
+            self.status.set(statusTranscribing)
+            self.transcribing = True
+            self.control_btn.configure(text="Stop")
+        except Exception as e:
+            logger.show_error(f"Failed to start transcription: {str(e)}")
             return
-        
-        self.transcribing = True
-        self.status.set(statusTranscribing)
-        self.control_btn.configure(text="Stop")
 
     def _stop_transcribing(self):
         """Stop the transcription process."""

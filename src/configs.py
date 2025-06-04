@@ -1,4 +1,3 @@
-
 class OutputConfig:
     def __init__(self, output_dir: str):
         self.output_dir = output_dir
@@ -9,5 +8,6 @@ class AudioListenerConfig:
         self.chunk_duration = chunk_duration
 
 class TranscriberConfig:
-    def __init__(self, recogniser_name: str):
-        self.recogniser_name = recogniser_name
+    def __init__(self, recogniser_name: str, ai_enabled: bool = False):
+        self.recogniser_name = recogniser_name if not ai_enabled else "whisper"
+        self.ai_enabled = ai_enabled

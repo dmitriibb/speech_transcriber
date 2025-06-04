@@ -64,7 +64,7 @@ the AudioListener doesn't wait transcribe function to finish
   - Takes chunk_transcribed string and appends in to the current output file
 
 ### Iteration 2
-Status: TODO
+Status: Done
 
 Goal: human speech transcription with python libraries
 
@@ -72,4 +72,15 @@ Description: In the Transcriber implement 'def _dummy_transcribe(self, chunk_aud
 Import them if needed, but these libraries should use any external AI models
 
 ### Iteration 3
+Status: TODO
+
+Goal: add AI model and use  it for transcribing
+
+Description: we need to implement next features
+
+- In the GUI under recogniser_widget add new section AI. In this section we should have 1 checkbox / toggle "Enable". This toggle should change app variable "ai_enabled"
+- if "ai_enabled" = True, then in the Transcriber we should use AI model regardless of selected transcriber
+- For speech recognition we need to use AI model Whisper 
+
+### Iteration 4
 Status: TODO
