@@ -8,6 +8,6 @@ class AudioListenerConfig:
         self.chunk_duration = chunk_duration
 
 class TranscriberConfig:
-    def __init__(self, recogniser_name: str, ai_enabled: bool = False):
-        self.recogniser_name = recogniser_name if not ai_enabled else "whisper"
-        self.ai_enabled = ai_enabled
+    def __init__(self, recogniser_name: str, use_ai: bool = False):
+        self.recogniser_name = recogniser_name
+        self.use_ai = use_ai

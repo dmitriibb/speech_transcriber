@@ -25,7 +25,7 @@ class TranscriberApp:
         # State variables
         self.transcribing = False
         self.logger = Logger()
-        self.ai_enabled = tk.BooleanVar(value=False)
+        self.use_ai = tk.BooleanVar(value=False)
 
         default_directory = os.path.dirname(os.path.abspath(__file__))
         head, tail = os.path.split(default_directory)
@@ -109,7 +109,7 @@ class TranscriberApp:
         ai_toggle = ttk.Checkbutton(
             ai_frame,
             text="Enable AI",
-            variable=self.ai_enabled
+            variable=self.use_ai
         )
         ai_toggle.pack(side="left")
 
@@ -119,7 +119,7 @@ class TranscriberApp:
             textvariable=self.selected_recognizer,
             state="readonly"
         )
-        recogniser_dropdown['values'] = [recogniserDummy, recogniserSphinx, recogniserGoogleCloud, recogniserWhisper]
+        recogniser_dropdown['values'] = [recogniserDummy, recogniserSphinx, recogniserGoogleCloud]
         recogniser_dropdown.pack(fill="x", pady=(0, 5))
 
         # Chunk duration input
@@ -244,7 +244,7 @@ class TranscriberApp:
         try:
             chunk_duration = int(self.chunk_duration.get())
             audio_listener_config = AudioListenerConfig(self.selected_input.get(), chunk_duration)
-            transcriber_config = TranscriberConfig(self.selected_recognizer.get(), self.ai_enabled.get())
+            transcriber_config = TranscriberConfig(self.selected_recognizer.get(), self.use_ai.get())
             output_config = OutputConfig(self.output_directory.get())
 
             def writer_on_stop_callback():
