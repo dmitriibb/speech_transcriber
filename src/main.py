@@ -25,18 +25,26 @@ class TranscriberApp:
         # State variables
         self.transcribing = False
         self.logger = Logger()
-        self.use_ai = tk.BooleanVar(value=False)
 
-        default_directory = os.path.dirname(os.path.abspath(__file__))
-        head, tail = os.path.split(default_directory)
-        if tail == "src":
-            default_directory = os.path.join(head, "output")
+
         self.selected_input = tk.StringVar()
-        self.output_directory = tk.StringVar(value=default_directory)
+
+        base_directory = os.path.dirname(os.path.abspath(__file__))
+        head, tail = os.path.split(base_directory)
+        if tail == "src":
+            output_directory = os.path.join(head, "output")
+            tmp_directory = os.path.join(head, "tmp")
+        else:
+            output_directory = base_directory
+            tmp_directory = os.path.join(base_directory, "tmp")
+
+        self.output_directory = tk.StringVar(value=output_directory)
+        self.tmp_directory = tk.StringVar(value=tmp_directory)
         self.selected_recognizer = tk.StringVar()
         self.status = tk.StringVar()
         self.include_output_devices = tk.BooleanVar(value=False)
         self.chunk_duration = tk.StringVar(value="5")
+        self.use_ai = tk.BooleanVar(value=False)
 
         self.audio_listener : AudioListener = None
         
@@ -84,34 +92,45 @@ class TranscriberApp:
         output_frame = ttk.LabelFrame(self.root, text="Output Directory", padding="10")
         output_frame.pack(fill="x", padx=10, pady=5)
 
+        # Output directory section
+        output_container = ttk.Frame(output_frame)
+        output_container.pack(fill="x", pady=(0, 5))
+
         output_entry = ttk.Entry(
-            output_frame,
+            output_container,
             textvariable=self.output_directory,
             state="readonly"
         )
         output_entry.pack(side="left", fill="x", expand=True)
 
         choose_btn = ttk.Button(
-            output_frame,
+            output_container,
             text="Choose",
             command=self._choose_directory
         )
         choose_btn.pack(side="right", padx=(5, 0))
 
+        # Tmp directory section
+        tmp_container = ttk.Frame(output_frame)
+        tmp_container.pack(fill="x")
+
+        tmp_directory_entry = ttk.Entry(
+            tmp_container,
+            textvariable=self.tmp_directory,
+            state="readonly"
+        )
+        tmp_directory_entry.pack(side="left", fill="x", expand=True)
+
+        tmp_directory_choose_btn = ttk.Button(
+            tmp_container,
+            text="Choose",
+            command=self._choose_tmp_directory
+        )
+        tmp_directory_choose_btn.pack(side="right", padx=(5, 0))
+
     def _recogniser_widget(self):
         recogniser_frame = ttk.LabelFrame(self.root, text="Speech recognition", padding="10")
         recogniser_frame.pack(fill="x", padx=10, pady=5)
-
-        # AI Section
-        ai_frame = ttk.Frame(recogniser_frame)
-        ai_frame.pack(fill="x", pady=(0, 5))
-        
-        ai_toggle = ttk.Checkbutton(
-            ai_frame,
-            text="Enable AI",
-            variable=self.use_ai
-        )
-        ai_toggle.pack(side="left")
 
         # Recognizer dropdown
         recogniser_dropdown = ttk.Combobox(
@@ -146,6 +165,17 @@ class TranscriberApp:
             validatecommand=vcmd
         )
         duration_entry.pack(side="left")
+
+        # AI Section
+        ai_frame = ttk.Frame(recogniser_frame)
+        ai_frame.pack(fill="x", pady=(0, 5))
+
+        ai_toggle = ttk.Checkbutton(
+            ai_frame,
+            text="Enable AI",
+            variable=self.use_ai
+        )
+        ai_toggle.pack(side="left")
 
     def _status_widget(self):
         status_frame = ttk.LabelFrame(self.root, text="Status", padding="10")
@@ -224,6 +254,14 @@ class TranscriberApp:
         )
         if directory:  # If user didn't cancel
             self.output_directory.set(directory)
+
+    def _choose_tmp_directory(self):
+        directory = filedialog.askdirectory(
+            initialdir=self.tmp_directory.get(),
+            title="Select tmp Directory"
+        )
+        if directory:  # If user didn't cancel
+            self.tmp_directory.set(directory)
             
     def _toggle_transcription(self):
         if self.transcribing:

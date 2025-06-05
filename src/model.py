@@ -12,3 +12,13 @@ class AudioDeviceWrapper:
 
     def get_name(self) -> str:
         return f"{self.type}: {self.device['name']} ({self.device['hostapi']})"
+
+class ChunkAudio:
+    def __init__(self, index: int, data):
+        self.index = index
+        self.data = data
+
+class ChunkTranscribed:
+    def __init__(self, index: int, data):
+        self.index = index
+        self.data = data

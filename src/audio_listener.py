@@ -3,11 +3,12 @@ import numpy as np
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from src.audio_device_wrapper import AudioDeviceWrapper
+from src.model import AudioDeviceWrapper
 from src.audio_devices import get_device_by_name, SystemSoundRecorder
 from src.configs import AudioListenerConfig
 from src.constants import deviceTypeInput
 from src.logger import Logger, logger
+from src.model import ChunkAudio
 from src.transcriber import Transcriber
 
 
@@ -60,8 +61,9 @@ class AudioListener:
             self.stream = stream
             while not self.stop_event.is_set():
                 try:
-                    audio_chunk = self.audio_queue.get(timeout=1.0)
-                    self.transcriber.transcribe_async(audio_chunk)
+                    audio = self.audio_queue.get(timeout=1.0)
+                    chunk = ChunkAudio(self.chunk_counter, audio)
+                    self.transcriber.transcribe_async(chunk)
                     self.audio_queue.task_done()
                     self.chunk_counter += 1
                     logger.log(f"AudioListener chunk {self.chunk_counter}")
@@ -80,8 +82,9 @@ class AudioListener:
             self.stream = stream
             while not self.stop_event.is_set():
                 try:
-                    audio_chunk = self.audio_queue.get(timeout=1.0)
-                    self.transcriber.transcribe_async(audio_chunk)
+                    audio = self.audio_queue.get(timeout=1.0)
+                    chunk = ChunkAudio(self.chunk_counter, audio)
+                    self.transcriber.transcribe_async(chunk)
                     self.audio_queue.task_done()
                     self.chunk_counter += 1
                     logger.log(f"AudioListener chunk {self.chunk_counter}")

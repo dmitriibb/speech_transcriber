@@ -4,11 +4,13 @@ from typing import Optional
 import speech_recognition as sr
 import numpy as np
 import io
+import os
 import wave
 import whisper
 
 from src.configs import TranscriberConfig
 from src.logger import logger
+from src.model import ChunkAudio, ChunkTranscribed
 from src.output_writer import OutputWriter
 from src.constants import *
 
@@ -18,7 +20,6 @@ class Transcriber:
         self.output_writer = output_writer
         self.recognizer_name = config.recogniser_name
         self.use_ai = config.use_ai
-        self.chunk_counter = 0
         self._lock = Lock()
         self._processing_queue = Queue()
         self._processing_thread: Optional[Thread] = None
@@ -44,23 +45,22 @@ class Transcriber:
         try:
             chunk_audio = self._processing_queue.get(timeout=1.0)
             with self._lock:
-                chunk_transcribed = self._transcribe(chunk_audio)
-                self.chunk_counter += 1
-                logger.log(f"Transcriber chunk {self.chunk_counter}")
-                self.output_writer.write(chunk_transcribed)
+                transcribed = self._transcribe(chunk_audio)
+                logger.log(f"Transcriber chunk {chunk_audio.index}")
+                self.output_writer.write(ChunkTranscribed(chunk_audio.index, transcribed))
                 self._processing_queue.task_done()
         except Empty:
             pass # No chunks to process, continue waiting
         
-    def transcribe(self, chunk_audio):
-        chunk_transcribed = self._transcribe(chunk_audio)
-        if chunk_transcribed:
-            self.output_writer.write(chunk_transcribed)
+    def transcribe(self, chunk_audio: ChunkAudio):
+        transcribed = self._transcribe(chunk_audio)
+        if transcribed:
+            self.output_writer.write(ChunkTranscribed(chunk_audio.index, transcribed))
 
-    def transcribe_async(self, chunk_audio):
+    def transcribe_async(self, chunk_audio: ChunkAudio):
         self._processing_queue.put(chunk_audio)
 
-    def _transcribe(self, chunk_audio) -> str:
+    def _transcribe(self, chunk_audio: ChunkAudio) -> str:
         if self.use_ai:
             return self._transcribe_whisper(chunk_audio)
         if self.recognizer_name == recogniserDummy:
@@ -72,12 +72,12 @@ class Transcriber:
         else:
             raise Exception(f"recogniser {self.recognizer_name} is not supported")
 
-    def _transcribe_dummy(self, chunk_audio) -> str:
-        return f"chunk: {self.chunk_counter}, size: {chunk_audio.nbytes} bytes"
+    def _transcribe_dummy(self, chunk_audio: ChunkAudio) -> str:
+        return f"chunk: {chunk_audio.index}, size: {chunk_audio.data.nbytes} bytes"
 
-    def _transcribe_sphinx(self, chunk_audio) -> str:
+    def _transcribe_sphinx(self, chunk_audio: ChunkAudio) -> str:
         try:
-            wav_bytes = self._numpy_to_wav(chunk_audio)
+            wav_bytes = self._numpy_to_wav(chunk_audio.data)
             audio_data = sr.AudioData(wav_bytes, sample_rate=16000, sample_width=2)
 
             try:
@@ -93,9 +93,9 @@ class Transcriber:
             logger.log(f"Error processing audio chunk: {e}")
             return ""
 
-    def _transcribe_google_cloud(self, chunk_audio) -> str:
+    def _transcribe_google_cloud(self, chunk_audio: ChunkAudio) -> str:
         try:
-            wav_bytes = self._numpy_to_wav(chunk_audio)
+            wav_bytes = self._numpy_to_wav(chunk_audio.data)
             audio_data = sr.AudioData(wav_bytes, sample_rate=16000, sample_width=2)
 
             try:
@@ -117,13 +117,13 @@ class Transcriber:
             self._whisper_model = whisper.load_model("base")
         logger.log("Whisper model loaded")
 
-    def _transcribe_whisper(self, chunk_audio) -> str:
+    def _transcribe_whisper(self, chunk_audio: ChunkAudio) -> str:
         try:
             if self._whisper_model is None:
                 raise Exception("Ai model is not loaded")
 
             # Convert numpy array to temporary WAV file
-            wav_bytes = self._numpy_to_wav(chunk_audio)
+            wav_bytes = self._numpy_to_wav(chunk_audio.data)
             
             # Save to a temporary file since Whisper works with files
             temp_file = "temp_chunk.wav"
@@ -134,7 +134,6 @@ class Transcriber:
             result = self._whisper_model.transcribe(temp_file)
             
             # Clean up temporary file
-            import os
             os.remove(temp_file)
             
             return result["text"].strip()

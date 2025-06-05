@@ -3,6 +3,7 @@ from threading import Lock
 
 from src.configs import OutputConfig
 from src.logger import logger
+from src.model import ChunkTranscribed
 
 
 class OutputWriter:
@@ -11,7 +12,6 @@ class OutputWriter:
         self.current_file = None
         self._lock = Lock()
         self._on_stop_callback = on_stop_callback
-        self.chunk_counter = 0
         
     def _get_next_file_number(self):
         existing_files = [f for f in os.listdir(self.output_dir) 
@@ -34,16 +34,15 @@ class OutputWriter:
         with open(self.current_file, 'w') as f:
             pass
             
-    def write(self, text):
+    def write(self, chunk_transcribed: ChunkTranscribed):
         if self.current_file is None:
             raise ValueError("No active transcription file")
             
         with self._lock:
-            if text:
+            if chunk_transcribed.data:
                 with open(self.current_file, 'a', encoding='utf-8') as f:
-                    f.write(text + "\n")
-            self.chunk_counter += 1
-            logger.log(f"OutputWriter chunk {self.chunk_counter}")
+                    f.write(chunk_transcribed.data + "\n")
+            logger.log(f"OutputWriter chunk {chunk_transcribed.index}")
 
     def stop(self):
         with self._lock:
