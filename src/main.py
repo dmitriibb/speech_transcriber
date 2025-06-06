@@ -3,6 +3,8 @@ from enum import Enum
 from tkinter import ttk, filedialog, messagebox
 import sounddevice as sd
 import os
+import threading
+import whisper
 
 from urllib3.filepost import writer
 
@@ -11,6 +13,7 @@ from file_listener import FileListener
 from src.audio_devices import get_devices_names
 from src.configs import OutputConfig, TranscriberConfig, AudioListenerConfig
 from src.constants import *
+from src.gui_utils import get_available_models, get_downloaded_models, format_model_name
 from src.logger import Logger, logger
 from transcriber import Transcriber
 from output_writer import OutputWriter
@@ -49,6 +52,7 @@ class TranscriberApp:
         self.include_output_devices = tk.BooleanVar(value=False)
         self.chunk_duration = tk.StringVar(value="5")
         self.use_ai = tk.BooleanVar(value=False)
+        self.selected_ai_model = tk.StringVar()
 
         self.audio_listener : AudioListener = None
         self.file_listener : FileListener = None
@@ -238,15 +242,25 @@ class TranscriberApp:
         duration_entry.pack(side="left")
 
         # AI Section
-        ai_frame = ttk.Frame(recogniser_frame)
-        ai_frame.pack(fill="x", pady=(0, 5))
+        ai_frame = ttk.LabelFrame(recogniser_frame, text="AI", padding="10")
+        ai_frame.pack(fill="x", pady=(10, 5), expand=True)
 
         ai_toggle = ttk.Checkbutton(
             ai_frame,
-            text="Enable AI",
-            variable=self.use_ai
+            text="Use AI",
+            variable=self.use_ai,
+            command=self._toggle_ai
         )
         ai_toggle.pack(side="left")
+
+        # AI model dropdown
+        self.ai_model_dropdown = ttk.Combobox(
+            ai_frame,
+            textvariable=self.selected_ai_model,
+            state="disabled"
+        )
+        self.ai_model_dropdown.pack(side="left", fill="x", expand=True, padx=(5,0))
+        self.ai_model_dropdown.bind("<<ComboboxSelected>>", self._on_ai_model_select)
 
     def _status_widget(self):
         status_frame = ttk.LabelFrame(self.root, text="Status", padding="10")
@@ -255,19 +269,19 @@ class TranscriberApp:
             status_frame,
             textvariable=self.status
         )
-        status_text.pack()
+        status_text.pack(fill="x")
 
     def _start_button_widget(self):
-        self.control_btn = ttk.Button(
+        self.start_button = ttk.Button(
             self.root,
             text="Start",
             command=self._toggle_transcription
         )
-        self.control_btn.pack(pady=20)
+        self.start_button.pack(pady=10)
 
     def _logs_widget(self):
         logs_frame = ttk.LabelFrame(self.root, text="Logs", padding="10")
-        logs_frame.pack(fill="x", padx=10, pady=5)
+        logs_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         # Create a frame to hold both the text widget and scrollbar
         text_frame = ttk.Frame(logs_frame)
@@ -276,7 +290,7 @@ class TranscriberApp:
         # Create the text widget
         self.logs_text = tk.Text(
             text_frame,
-            height=7,
+            height=10,
             wrap=tk.WORD,
             state="disabled"
         )
@@ -333,6 +347,7 @@ class TranscriberApp:
         )
         if directory:  # If user didn't cancel
             self.tmp_directory.set(directory)
+            self._update_ai_models_dropdown() # Refresh models status
             
     def _toggle_transcription(self):
         if self.transcribing:
@@ -349,46 +364,121 @@ class TranscriberApp:
             output_writer = OutputWriter(output_config, writer_on_stop_callback)
             output_writer.start_new_file()
 
-            transcriber_config = TranscriberConfig(self.selected_recognizer.get(), self.use_ai.get())
+            model_name = self.selected_ai_model.get().split(" - ")[0] if self.use_ai.get() else None
+            transcriber_config = TranscriberConfig(
+                recognizer=self.selected_recognizer.get(),
+                use_ai=self.use_ai.get(),
+                model=model_name,
+            )
             transcriber = Transcriber(output_writer, transcriber_config)
+            transcriber.init()
 
-            live_transcribe = self.input_mode.get() == InputMode.LIVE.value
-            if live_transcribe:
-                transcriber.init()
-                chunk_duration = int(self.chunk_duration.get())
-                audio_listener_config = AudioListenerConfig(self.selected_input.get(), chunk_duration)
-                self.audio_listener = AudioListener(transcriber, audio_listener_config)
-            else:
-                transcriber.use_ai = True
-                transcriber.init()
-                if not self.input_file.get():
-                    raise ValueError("Please select an input file")
-                self.audio_listener = FileListener(transcriber)
-                self.audio_listener.set_input_file(self.input_file.get())
+            if self.input_mode.get() == InputMode.LIVE.value:
+                audio_config = AudioListenerConfig(
+                    input_device=self.selected_input.get(),
+                    chunk_duration=int(self.chunk_duration.get())
+                )
+                self.audio_listener = AudioListener(transcriber, audio_config)
+                self.audio_listener.start()
+            else: # FILE mode
+                self.file_listener = FileListener(transcriber, self.input_file.get())
+                self.file_listener.start()
 
-            self.audio_listener.start()
             self.status.set(statusTranscribing)
             self.transcribing = True
-            self.control_btn.configure(text="Stop")
+            self.start_button.configure(text="Stop")
         except Exception as e:
             logger.show_error(f"Failed to start transcription: {str(e)}")
-            return
 
     def _stop_transcribing(self):
-        """Stop the transcription process."""
-        self.transcribing = False
-        self.status.set(statusFinishing)
-        self.audio_listener.stop()
-        self.audio_listener = None
+        if self.audio_listener:
+            self.audio_listener.stop()
+            self.audio_listener = None
+        
+        if self.file_listener:
+            self.file_listener.stop() # Assuming file listener has a stop method
+            self.file_listener = None
 
-        self.control_btn.configure(text="Start")
+        self.start_button.configure(text="Start")
 
     def log_all_devices(self):
+        self.logger.log("all available devices:")
         hostapis = sd.query_hostapis()
         for i, h in enumerate(hostapis):
-            logger.log(f"{i}: {h['name']}")
+            self.logger.log(f"{i}: {h['name']}")
         for i, dev in enumerate(sd.query_devices()):
-            logger.log(f"{i}: {dev['name']} ({dev['hostapi']})")
+            self.logger.log(f"{i}: {dev['name']} ({dev['hostapi']})")
+
+    def _toggle_ai(self):
+        if self.use_ai.get():
+            self.ai_model_dropdown.config(state="readonly")
+            self._update_ai_models_dropdown()
+        else:
+            self.ai_model_dropdown.config(state="disabled")
+            self.selected_ai_model.set("")
+
+    def _update_ai_models_dropdown(self):
+        downloaded_models = get_downloaded_models(self.tmp_directory.get())
+        all_models = get_available_models()
+        
+        # Filter out multilingual models if needed, for now all are included
+        all_models = [m for m in all_models if ".en" in m or m in ["tiny", "base", "small", "medium", "large"]]
+
+        formatted_models = [format_model_name(m, downloaded_models) for m in all_models]
+        self.ai_model_dropdown['values'] = formatted_models
+
+        # set default selection
+        if formatted_models:
+            # try to keep current selection if it's still valid
+            current_model_full_name = self.selected_ai_model.get()
+            
+            if current_model_full_name in formatted_models:
+                # model and its status is still the same
+                self.selected_ai_model.set(current_model_full_name)
+            else:
+                # check if just status changed
+                current_model_name = current_model_full_name.split(" - ")[0]
+                new_status = "downloaded" if current_model_name in downloaded_models else "to download"
+                new_formatted_name = f"{current_model_name} - {new_status}"
+                if new_formatted_name in formatted_models:
+                    self.selected_ai_model.set(new_formatted_name)
+                else:
+                    # select first one
+                    self.selected_ai_model.set(formatted_models[0])
+
+    def _on_ai_model_select(self, event=None):
+        selection = self.selected_ai_model.get()
+        model_name = selection.split(" - ")[0]
+        
+        if "to download" in selection:
+            if messagebox.askyesno("Download Model", f"Model '{model_name}' is not downloaded. Do you want to download it?"):
+                self._download_model(model_name)
+
+    def _download_model(self, model_name):
+        self.status.set(f"Downloading {model_name} model...")
+        self.root.update_idletasks()
+        self.start_button.config(state="disabled")
+        self.ai_model_dropdown.config(state="disabled")
+
+        def do_download():
+            try:
+                whisper.load_model(model_name, download_root=self.tmp_directory.get())
+                self.status.set(f"Model {model_name} downloaded.")
+                # self._update_ai_models_dropdown() must be called from main thread
+                self.root.after(0, self._update_ai_models_dropdown)
+
+            except Exception as e:
+                self.status.set(f"Error downloading {model_name}: {e}")
+                messagebox.showerror("Error", f"Failed to download model: {e}")
+            finally:
+                def reenable_widgets():
+                    self.start_button.config(state="normal")
+                    if self.use_ai.get():
+                        self.ai_model_dropdown.config(state="readonly")
+                
+                self.root.after(0, reenable_widgets)
+
+        threading.Thread(target=do_download, daemon=True).start()
 
 def main():
     root = tk.Tk()

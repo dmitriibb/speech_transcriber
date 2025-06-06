@@ -20,6 +20,7 @@ class Transcriber:
         self.output_writer = output_writer
         self.recognizer_name = config.recogniser_name
         self.use_ai = config.use_ai
+        self.model = config.model
         self._lock = Lock()
         self._processing_queue = Queue()
         self._processing_thread: Optional[Thread] = None
@@ -124,8 +125,10 @@ class Transcriber:
 
     def _load_ai_model(self):
         if self._whisper_model is None:
-            logger.log("Loading Whisper model...")
-            self._whisper_model = whisper.load_model("base")
+            if self.model is None:
+                raise Exception("AI model name is not configured")
+            logger.log(f"Loading Whisper model: {self.model}...")
+            self._whisper_model = whisper.load_model(self.model)
         logger.log("Whisper model loaded")
 
     def _transcribe_whisper(self, chunk_audio: ChunkAudio) -> str:

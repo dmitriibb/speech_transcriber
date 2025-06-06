@@ -72,7 +72,7 @@ Description: In the Transcriber implement 'def _dummy_transcribe(self, chunk_aud
 Import them if needed, but these libraries should use any external AI models
 
 ### Iteration 3
-Status: TODO
+Status: Done
 
 Goal: add AI model and use  it for transcribing
 
@@ -83,7 +83,7 @@ Description: we need to implement next features
 - For speech recognition we need to use AI model Whisper 
 
 ### Iteration 4
-Status: TODO
+Status: Done
 
 Goal: add support to transribe a single mp3 file
 
@@ -98,5 +98,16 @@ Description: need to add next features
   - FileListener for uses only AI and feeds the whole file into AI model
 
 ### Iteration 5
-Status: TODO
+Status: Done
 
+Goal: we need to have opportunity to choose Whisper model
+
+Description: add next features
+- Move "Use AI" checkbox into the new section called "AI section"
+- If "Use AI" is checked - in the "Ai section" display a dropdown with all available Whisper models ("base", "small.en" etc..)
+- Items in the dropdown should look like [model_name - downloaded_status] Example: "base - downloaded", "small.en - to download"
+- Downloaded models should be stored in the tmp_directory. So we can always see which one are downloaded already
+- If user selects option with "to download" - then we download that model into the tmp_directory
+
+### Iteration 6
+Status: TODO
