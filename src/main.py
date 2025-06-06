@@ -7,6 +7,7 @@ import os
 from urllib3.filepost import writer
 
 from audio_listener import AudioListener
+from file_listener import FileListener
 from src.audio_devices import get_devices_names
 from src.configs import OutputConfig, TranscriberConfig, AudioListenerConfig
 from src.constants import *
@@ -14,7 +15,9 @@ from src.logger import Logger, logger
 from transcriber import Transcriber
 from output_writer import OutputWriter
 
-
+class InputMode(Enum):
+    LIVE = "Live"
+    FILE = "File"
 
 class TranscriberApp:
     def __init__(self, root):
@@ -26,8 +29,9 @@ class TranscriberApp:
         self.transcribing = False
         self.logger = Logger()
 
-
+        self.input_mode = tk.StringVar(value=InputMode.LIVE.value)
         self.selected_input = tk.StringVar()
+        self.input_file = tk.StringVar()
 
         base_directory = os.path.dirname(os.path.abspath(__file__))
         head, tail = os.path.split(base_directory)
@@ -47,6 +51,7 @@ class TranscriberApp:
         self.use_ai = tk.BooleanVar(value=False)
 
         self.audio_listener : AudioListener = None
+        self.file_listener : FileListener = None
         
         self._create_widgets()
 
@@ -55,6 +60,7 @@ class TranscriberApp:
         self.selected_recognizer.set(recogniserGoogleCloud)
         
     def _create_widgets(self):
+        self._input_mode_widget()
         self._audio_source_widget()
         self._output_file_widget()
         self._recogniser_widget()
@@ -62,12 +68,38 @@ class TranscriberApp:
         self._start_button_widget()
         self._logs_widget()
 
-    def _audio_source_widget(self):
-        input_frame = ttk.LabelFrame(self.root, text="Audio Input Source", padding="10")
-        input_frame.pack(fill="x", padx=10, pady=5)
+    def _input_mode_widget(self):
+        mode_frame = ttk.LabelFrame(self.root, text="Input Mode", padding="10")
+        mode_frame.pack(fill="x", padx=10, pady=5)
 
+        # Create radio buttons for mode selection
+        live_radio = ttk.Radiobutton(
+            mode_frame,
+            text=InputMode.LIVE.value,
+            variable=self.input_mode,
+            value=InputMode.LIVE.value,
+            command=self._update_input_mode
+        )
+        live_radio.pack(side="left", padx=5)
+
+        file_radio = ttk.Radiobutton(
+            mode_frame,
+            text=InputMode.FILE.value,
+            variable=self.input_mode,
+            value=InputMode.FILE.value,
+            command=self._update_input_mode
+        )
+        file_radio.pack(side="left", padx=5)
+
+    def _audio_source_widget(self):
+        self.input_frame = ttk.LabelFrame(self.root, text="Audio Input", padding="10")
+        self.input_frame.pack(fill="x", padx=10, pady=5)
+
+        # Live input widgets
+        self.live_frame = ttk.Frame(self.input_frame)
+        
         # Create a container frame for dropdown and checkbox
-        container = ttk.Frame(input_frame)
+        container = ttk.Frame(self.live_frame)
         container.pack(fill="x")
 
         # Add the dropdown on the left side
@@ -87,6 +119,45 @@ class TranscriberApp:
             command=self._refresh_input_devices
         )
         include_output_checkbox.pack(side="right", padx=(5, 0))
+
+        # File input widgets
+        self.file_frame = ttk.Frame(self.input_frame)
+        
+        file_entry = ttk.Entry(
+            self.file_frame,
+            textvariable=self.input_file,
+            state="readonly"
+        )
+        file_entry.pack(side="left", fill="x", expand=True)
+
+        choose_file_btn = ttk.Button(
+            self.file_frame,
+            text="Choose File",
+            command=self._choose_input_file
+        )
+        choose_file_btn.pack(side="right", padx=(5, 0))
+
+        # Show initial frame based on mode
+        self._update_input_mode()
+
+    def _update_input_mode(self):
+        if self.input_mode.get() == InputMode.LIVE.value:
+            self.file_frame.pack_forget()
+            self.live_frame.pack(fill="x")
+        else:
+            self.live_frame.pack_forget()
+            self.file_frame.pack(fill="x")
+
+    def _choose_input_file(self):
+        file_path = filedialog.askopenfilename(
+            title="Select Audio File",
+            filetypes=[
+                ("Audio Files", "*.mp3 *.wav *.m4a *.aac *.ogg"),
+                ("All Files", "*.*")
+            ]
+        )
+        if file_path:
+            self.input_file.set(file_path)
 
     def _output_file_widget(self):
         output_frame = ttk.LabelFrame(self.root, text="Output Directory", padding="10")
@@ -270,19 +341,7 @@ class TranscriberApp:
             self._start_transcribing()
 
     def _start_transcribing(self):
-        """Start the transcription process."""
-        if not self.selected_input.get():
-            logger.show_error("Please select an input source")
-            return
-            
-        if not os.path.exists(self.output_directory.get()):
-            logger.show_error("Please select a valid output directory")
-            return
-
         try:
-            chunk_duration = int(self.chunk_duration.get())
-            audio_listener_config = AudioListenerConfig(self.selected_input.get(), chunk_duration)
-            transcriber_config = TranscriberConfig(self.selected_recognizer.get(), self.use_ai.get())
             output_config = OutputConfig(self.output_directory.get())
 
             def writer_on_stop_callback():
@@ -290,11 +349,21 @@ class TranscriberApp:
             output_writer = OutputWriter(output_config, writer_on_stop_callback)
             output_writer.start_new_file()
 
+            transcriber_config = TranscriberConfig(self.selected_recognizer.get(), self.use_ai.get())
             transcriber = Transcriber(output_writer, transcriber_config)
-            transcriber.app = self  # Set reference to main app for logging
 
-            self.audio_listener = AudioListener(transcriber, audio_listener_config)
-            self.audio_listener.app = self  # Set reference to main app for logging
+            live_transcribe = self.input_mode.get() == InputMode.LIVE.value
+            if live_transcribe:
+                transcriber.init()
+                chunk_duration = int(self.chunk_duration.get())
+                audio_listener_config = AudioListenerConfig(self.selected_input.get(), chunk_duration)
+                self.audio_listener = AudioListener(transcriber, audio_listener_config)
+            else:
+                transcriber.use_ai = True
+                transcriber.init()
+                if not self.input_file.get():
+                    raise ValueError("Please select an input file")
+                self.audio_listener = FileListener(transcriber)
 
             self.audio_listener.start()
             self.status.set(statusTranscribing)

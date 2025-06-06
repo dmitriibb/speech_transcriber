@@ -63,7 +63,7 @@ class AudioListener:
                 try:
                     audio = self.audio_queue.get(timeout=1.0)
                     chunk = ChunkAudio(self.chunk_counter, audio)
-                    self.transcriber.transcribe_async(chunk)
+                    self.transcriber.transcribe_chunk_async(chunk)
                     self.audio_queue.task_done()
                     self.chunk_counter += 1
                     logger.log(f"AudioListener chunk {self.chunk_counter}")
@@ -84,7 +84,7 @@ class AudioListener:
                 try:
                     audio = self.audio_queue.get(timeout=1.0)
                     chunk = ChunkAudio(self.chunk_counter, audio)
-                    self.transcriber.transcribe_async(chunk)
+                    self.transcriber.transcribe_chunk_async(chunk)
                     self.audio_queue.task_done()
                     self.chunk_counter += 1
                     logger.log(f"AudioListener chunk {self.chunk_counter}")
@@ -124,6 +124,6 @@ class AudioListener:
         # send remaining audio chunks
         while not self.audio_queue.empty():
             audio_chunk = self.audio_queue.get()
-            self.transcriber.transcribe_async(audio_chunk)
+            self.transcriber.transcribe_chunk_async(audio_chunk)
             self.audio_queue.task_done()
         self.transcriber.stop()

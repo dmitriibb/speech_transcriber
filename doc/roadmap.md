@@ -84,3 +84,19 @@ Description: we need to implement next features
 
 ### Iteration 4
 Status: TODO
+
+Goal: add support to transribe a single mp3 file
+
+Description: need to add next features
+- at the top of the GUI add toggle or switch between transcribe "live" and "file"
+- if "live" is selected - then existing input sourse is enabled and currently implemented logic remains the same
+- if "file" is selected:
+  - disable "input sourse" dropdown
+  - enable "input file" field - this should be a new file choose field and button
+  - Create a new class FileListener (create a new file file_listener.py) for that. 
+  - In the existing flow just use this FileListener instead of AudioListener
+  - FileListener for uses only AI and feeds the whole file into AI model
+
+### Iteration 5
+Status: TODO
+

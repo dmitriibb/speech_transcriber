@@ -22,3 +22,5 @@ class ChunkTranscribed:
     def __init__(self, index: int, data):
         self.index = index
         self.data = data
+
+

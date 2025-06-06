@@ -27,9 +27,12 @@ class Transcriber:
         self._recognizer = sr.Recognizer()
         self._whisper_model = None
         self._start_processing_thread()
+        self._ready = False
 
+    def init(self):
         if self.use_ai:
             self._load_ai_model()
+        self._ready = True
         
     def _start_processing_thread(self):
         self._should_stop = False
@@ -52,13 +55,21 @@ class Transcriber:
         except Empty:
             pass # No chunks to process, continue waiting
         
-    def transcribe(self, chunk_audio: ChunkAudio):
+    def transcribe_chunk(self, chunk_audio: ChunkAudio):
+        if not self._ready:
+            raise Exception("Transcriber is not ready")
         transcribed = self._transcribe(chunk_audio)
         if transcribed:
             self.output_writer.write(ChunkTranscribed(chunk_audio.index, transcribed))
 
-    def transcribe_async(self, chunk_audio: ChunkAudio):
+    def transcribe_chunk_async(self, chunk_audio: ChunkAudio):
+        if not self._ready:
+            raise Exception("Transcriber is not ready")
         self._processing_queue.put(chunk_audio)
+
+    def transcribe_file(self, file_path: str):
+        transcribed = self._transcribe_file_with_whisper(file_path)
+        self.output_writer.write(ChunkTranscribed(1, transcribed))
 
     def _transcribe(self, chunk_audio: ChunkAudio) -> str:
         if self.use_ai:
@@ -119,9 +130,6 @@ class Transcriber:
 
     def _transcribe_whisper(self, chunk_audio: ChunkAudio) -> str:
         try:
-            if self._whisper_model is None:
-                raise Exception("Ai model is not loaded")
-
             # Convert numpy array to temporary WAV file
             wav_bytes = self._numpy_to_wav(chunk_audio.data)
             
@@ -129,18 +137,23 @@ class Transcriber:
             temp_file = "temp_chunk.wav"
             with open(temp_file, "wb") as f:
                 f.write(wav_bytes)
-            
-            # Transcribe using Whisper
-            result = self._whisper_model.transcribe(temp_file)
-            
-            # Clean up temporary file
+
+            result = self._transcribe_file_with_whisper(temp_file)
+
             os.remove(temp_file)
             
-            return result["text"].strip()
+            return result
 
         except Exception as e:
             logger.log(f"Error in Whisper transcription: {e}")
             return ""
+
+    def _transcribe_file_with_whisper(self, file_path: str) -> str:
+        if self._whisper_model is None:
+            raise Exception("Ai model is not loaded")
+
+        result = self._whisper_model.transcribe(file_path)
+        return result["text"].strip()
 
     def _numpy_to_wav(self, audio_chunk: np.ndarray) -> bytes:
         """Convert numpy array to WAV format bytes."""
