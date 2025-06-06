@@ -26,7 +26,7 @@ class TranscriberApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Speech Transcriber")
-        self.root.geometry("600x600")
+        self.root.geometry("600x700")
         
         # State variables
         self.transcribing = False
@@ -54,7 +54,7 @@ class TranscriberApp:
         self.use_ai = tk.BooleanVar(value=False)
         self.selected_ai_model = tk.StringVar()
 
-        self.audio_listener : AudioListener = None
+        self.listener : AudioListener = None
         self.file_listener : FileListener = None
         
         self._create_widgets()
@@ -356,49 +356,54 @@ class TranscriberApp:
             self._start_transcribing()
 
     def _start_transcribing(self):
+        transcribing_file = self.input_mode.get() == InputMode.FILE.value
+        if transcribing_file and not self.use_ai:
+            logger.show_error("File transcribing is only available with AI")
+            return
+
         try:
             output_config = OutputConfig(self.output_directory.get())
 
-            def writer_on_stop_callback():
-                self.status.set(statusReady)
-            output_writer = OutputWriter(output_config, writer_on_stop_callback)
+            output_writer = OutputWriter(output_config, self.set_initial_state)
             output_writer.start_new_file()
 
             model_name = self.selected_ai_model.get().split(" - ")[0] if self.use_ai.get() else None
             transcriber_config = TranscriberConfig(
-                recognizer=self.selected_recognizer.get(),
+                recogniser_name=self.selected_recognizer.get(),
+                tmp_directory=self.tmp_directory.get(),
                 use_ai=self.use_ai.get(),
-                model=model_name,
+                model_name=model_name,
             )
             transcriber = Transcriber(output_writer, transcriber_config)
             transcriber.init()
 
-            if self.input_mode.get() == InputMode.LIVE.value:
+            if transcribing_file:
+                self.listener = FileListener(transcriber)
+                self.listener.set_input_file(self.input_file.get())
+            else:
                 audio_config = AudioListenerConfig(
-                    input_device=self.selected_input.get(),
+                    audio_device_name=self.selected_input.get(),
                     chunk_duration=int(self.chunk_duration.get())
                 )
-                self.audio_listener = AudioListener(transcriber, audio_config)
-                self.audio_listener.start()
-            else: # FILE mode
-                self.file_listener = FileListener(transcriber, self.input_file.get())
-                self.file_listener.start()
+                self.listener = AudioListener(transcriber, audio_config)
 
+            self.listener.start()
             self.status.set(statusTranscribing)
             self.transcribing = True
             self.start_button.configure(text="Stop")
         except Exception as e:
             logger.show_error(f"Failed to start transcription: {str(e)}")
+            self.set_initial_state()
 
     def _stop_transcribing(self):
-        if self.audio_listener:
-            self.audio_listener.stop()
-            self.audio_listener = None
-        
-        if self.file_listener:
-            self.file_listener.stop() # Assuming file listener has a stop method
-            self.file_listener = None
+        self.status.set(statusFinishing)
+        if self.listener:
+            self.listener.stop()
 
+    def set_initial_state(self):
+        self.listener = None
+        self.transcribing = False
+        self.status.set(statusReady)
         self.start_button.configure(text="Start")
 
     def log_all_devices(self):
@@ -422,7 +427,7 @@ class TranscriberApp:
         all_models = get_available_models()
         
         # Filter out multilingual models if needed, for now all are included
-        all_models = [m for m in all_models if ".en" in m or m in ["tiny", "base", "small", "medium", "large"]]
+        # all_models = [m for m in all_models if ".en" in m or m in ["tiny", "base", "small", "medium", "large"]]
 
         formatted_models = [format_model_name(m, downloaded_models) for m in all_models]
         self.ai_model_dropdown['values'] = formatted_models

@@ -8,7 +8,8 @@ class AudioListenerConfig:
         self.chunk_duration = chunk_duration
 
 class TranscriberConfig:
-    def __init__(self, recogniser_name: str, use_ai: bool = False, model: str = None):
+    def __init__(self, recogniser_name: str, tmp_directory: str, use_ai: bool = False, model_name: str = None):
         self.recogniser_name = recogniser_name
+        self.tmp_directory = tmp_directory
         self.use_ai = use_ai
-        self.model = model
+        self.model_name = model_name
