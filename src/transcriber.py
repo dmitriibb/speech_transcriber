@@ -71,7 +71,18 @@ class Transcriber:
 
     def transcribe_file(self, file_path: str):
         transcribed = self._transcribe_file_with_whisper(file_path)
-        self.output_writer.write(ChunkTranscribed(1, transcribed))
+        # Format the transcribed text to have each sentence on a new line
+        formatted_text = self._format_sentences(transcribed)
+        self.output_writer.write(ChunkTranscribed(1, formatted_text))
+
+    def _format_sentences(self, text: str) -> str:
+        """Format text so each sentence starts on a new line."""
+        # Replace common sentence endings with the ending + newline
+        for ending in ['. ', '! ', '? ']:
+            text = text.replace(ending, ending + '\n')
+        # Remove any extra newlines that might have been created
+        text = '\n'.join(line.strip() for line in text.splitlines() if line.strip())
+        return text
 
     def _transcribe(self, chunk_audio: ChunkAudio) -> str:
         if self.use_ai:
