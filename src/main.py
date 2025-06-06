@@ -364,6 +364,7 @@ class TranscriberApp:
                 if not self.input_file.get():
                     raise ValueError("Please select an input file")
                 self.audio_listener = FileListener(transcriber)
+                self.audio_listener.set_input_file(self.input_file.get())
 
             self.audio_listener.start()
             self.status.set(statusTranscribing)

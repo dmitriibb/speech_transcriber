@@ -27,25 +27,13 @@ class FileListener:
 
         self._processing_thread = Thread(target=self._process_file, daemon=True)
         self._processing_thread.start()
-        logger.log("Transcriber start")
+        logger.log("FileListener start")
 
     def stop(self):
-        pass
+        logger.log("FileListener finished")
 
     def _process_file(self):
         # Load audio file using pydub
-        audio = AudioSegment.from_file(self.input_file)
-        
-        # Convert to wav format in memory
-        wav_io = io.BytesIO()
-        audio.export(wav_io, format='wav')
-        wav_io.seek(0)
-        
-        # Read the wav data
-        with sf.SoundFile(wav_io) as wav_file:
-            audio_data = wav_file.read()
-            sample_rate = wav_file.samplerate
-
-        # Send the entire audio to transcriber
-        if self.is_running:
-            self.transcriber.transcribe_chunk(audio_data, sample_rate=sample_rate)
+        self.transcriber.transcribe_file(self.input_file)
+        self.stop()
+        self.transcriber.stop()
