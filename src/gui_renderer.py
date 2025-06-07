@@ -3,7 +3,7 @@ from enum import Enum
 from tkinter import ttk, filedialog, messagebox
 
 from src.audio_devices import get_devices_names
-from src.model import InputMode
+from src.model import InputMode, AudioInputLine
 from src.actions import TranscriberActions
 from src.constants import recogniserDummy, recogniserSphinx, recogniserGoogleCloud
 from src.gui_utils import get_available_models, get_downloaded_models, format_model_name
@@ -17,8 +17,32 @@ class MainProps:
 
 class LiveListenProps:
     def __init__(self):
-        self.selected_live_device =  tk.StringVar()
+        self.audio_input_lines = []  # List of AudioInputLine objects
         self.include_output_devices = tk.BooleanVar(value=False)
+        self.next_speaker_name = 'A'  # For auto-generating speaker names
+
+    def add_input_line(self):
+        """Add a new audio input line with default values"""
+        new_line = AudioInputLine(
+            device_name="",
+            speaker_name=self.next_speaker_name,
+            record=True,
+            transcribe=True
+        )
+        self.audio_input_lines.append(new_line)
+        self._increment_speaker_name()
+        return new_line
+
+    def remove_input_line(self, index: int):
+        """Remove an audio input line by index"""
+        if 0 <= index < len(self.audio_input_lines):
+            self.audio_input_lines.pop(index)
+
+    def _increment_speaker_name(self):
+        """Get next speaker name (A -> B -> C etc)"""
+        self.next_speaker_name = chr(ord(self.next_speaker_name) + 1)
+        if self.next_speaker_name > 'Z':
+            self.next_speaker_name = 'A'
 
 class FileListenProps:
     def __init__(self):
@@ -99,28 +123,121 @@ class GuiRenderer:
         self._render_input_frame()
         self.live_frame = ttk.Frame(self.input_frame)
 
-        # Create a container frame for dropdown and checkbox
-        container = ttk.Frame(self.live_frame)
-        container.pack(fill="x")
-
-        # Add the dropdown on the left side
-        self.audio_device_dropdown = ttk.Combobox(
-            container,
-            textvariable=self.live_listen_props.selected_live_device,
-            state="readonly"
+        # Add button to add new input line
+        add_button = ttk.Button(
+            self.live_frame,
+            text="Add Input",
+            command=self._add_input_line
         )
-        self.audio_device_dropdown['values'] = self._get_input_devices()
-        self.audio_device_dropdown.pack(side="left", fill="x", expand=True)
+        add_button.pack(fill="x", pady=(0, 5))
 
-        # Add the checkbox on the right side
+        # Container for input lines
+        self.input_lines_frame = ttk.Frame(self.live_frame)
+        self.input_lines_frame.pack(fill="x")
+
+        # Add checkbox for output devices
         include_output_checkbox = ttk.Checkbutton(
-            container,
+            self.live_frame,
             text="Include output devices",
             variable=self.live_listen_props.include_output_devices,
             command=self._refresh_input_devices
         )
-        include_output_checkbox.pack(side="right", padx=(5, 0))
+        include_output_checkbox.pack(fill="x", pady=(5, 0))
+
+        # Add initial input line
+        if not self.live_listen_props.audio_input_lines:
+            self._add_input_line()
+
         self._update_input_mode()
+
+    def _add_input_line(self):
+        """Add a new audio input line to the UI"""
+        new_line = self.live_listen_props.add_input_line()
+        self._render_input_line(new_line, len(self.live_listen_props.audio_input_lines) - 1)
+
+    def _render_input_line(self, input_line: AudioInputLine, index: int):
+        """Render a single audio input line"""
+        line_frame = ttk.Frame(self.input_lines_frame)
+        line_frame.pack(fill="x", pady=(0, 5))
+
+        # Remove button
+        remove_btn = ttk.Button(
+            line_frame,
+            text="-",
+            width=3,
+            command=lambda: self._remove_input_line(index)
+        )
+        remove_btn.pack(side="left", padx=(0, 5))
+
+        # Audio device dropdown
+        device_dropdown = ttk.Combobox(
+            line_frame,
+            state="readonly",
+            width=50
+        )
+        device_dropdown['values'] = self._get_input_devices()
+        device_dropdown.set(input_line.device_name if input_line.device_name else "")
+        device_dropdown.pack(side="left", padx=(0, 5))
+
+        # Bind the dropdown selection to update the input line
+        def on_device_select(event):
+            input_line.device_name = device_dropdown.get()
+        device_dropdown.bind('<<ComboboxSelected>>', on_device_select)
+
+        # Speaker name entry
+        speaker_label = ttk.Label(line_frame, text="Speaker:")
+        speaker_label.pack(side="left", padx=(5, 2))
+        
+        speaker_var = tk.StringVar(value=input_line.speaker_name)
+        speaker_entry = ttk.Entry(
+            line_frame,
+            textvariable=speaker_var,
+            width=5
+        )
+        speaker_entry.pack(side="left", padx=(0, 5))
+
+        # Bind the entry to update the input line
+        def on_speaker_change(*args):
+            input_line.speaker_name = speaker_var.get()
+        speaker_var.trace_add("write", on_speaker_change)
+
+        # Record checkbox
+        record_var = tk.BooleanVar(value=input_line.record)
+        record_check = ttk.Checkbutton(
+            line_frame,
+            text="Record",
+            variable=record_var
+        )
+        record_check.pack(side="left", padx=(5, 5))
+
+        # Bind the checkbox to update the input line
+        def on_record_change(*args):
+            input_line.record = record_var.get()
+        record_var.trace_add("write", on_record_change)
+
+        # Transcribe checkbox
+        transcribe_var = tk.BooleanVar(value=input_line.transcribe)
+        transcribe_check = ttk.Checkbutton(
+            line_frame,
+            text="Transcribe",
+            variable=transcribe_var
+        )
+        transcribe_check.pack(side="left")
+
+        # Bind the checkbox to update the input line
+        def on_transcribe_change(*args):
+            input_line.transcribe = transcribe_var.get()
+        transcribe_var.trace_add("write", on_transcribe_change)
+
+    def _remove_input_line(self, index: int):
+        """Remove an input line from the UI"""
+        self.live_listen_props.remove_input_line(index)
+        # Destroy all input lines and re-render them
+        for child in self.input_lines_frame.winfo_children():
+            child.destroy()
+        # Re-render all input lines
+        for i, line in enumerate(self.live_listen_props.audio_input_lines):
+            self._render_input_line(line, i)
 
     def _get_input_devices(self):
         return get_devices_names(self.live_listen_props.include_output_devices.get())

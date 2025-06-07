@@ -18,11 +18,11 @@ class TranscriberApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Speech Transcriber")
-        self.root.geometry("600x700")
+        self.root.geometry("700x700")
         
         # State variables
         self.logger = Logger()
-        self.listener = ListenerBase()
+        self.listeners = []
 
         # Initialize base directories
         base_directory = os.path.dirname(os.path.abspath(__file__))
@@ -84,31 +84,54 @@ class TranscriberApp:
 
         try:
             output_config = OutputConfig(self.output_props.output_directory.get())
-
             output_writer = OutputWriter(output_config, self.set_initial_state)
-            output_writer.start_new_file()
+            transcription_index = output_writer.start_new_file()
 
             model_name = self.recognizer_props.selected_ai_model.get().split(" - ")[0] if self.recognizer_props.use_ai.get() else None
-            transcriber_config = TranscriberConfig(
-                recogniser_name=self.recognizer_props.selected_recognizer.get(),
-                tmp_directory=self.output_props.tmp_directory.get(),
-                use_ai=self.recognizer_props.use_ai.get(),
-                model_name=model_name,
-            )
-            transcriber = Transcriber(output_writer, transcriber_config)
-            transcriber.init()
+
+            self.listeners = []
 
             if transcribing_file:
-                self.listener = FileListener(transcriber)
-                self.listener.set_input_file(self.file_listen_props.selected_file.get())
-            else:
-                audio_config = AudioListenerConfig(
-                    audio_device_name=self.live_listen_props.selected_live_device.get(),
-                    chunk_duration=int(self.recognizer_props.chunk_duration.get())
+                transcriber_config = TranscriberConfig(
+                    recogniser_name=self.recognizer_props.selected_recognizer.get(),
+                    tmp_directory=self.output_props.tmp_directory.get(),
+                    use_ai=self.recognizer_props.use_ai.get(),
+                    model_name=model_name,
+                    transcription_index=transcription_index,
+                    speaker_name=""
                 )
-                self.listener = AudioListener(transcriber, audio_config)
+                transcriber = Transcriber(output_writer, transcriber_config)
+                transcriber.init()
 
-            self.listener.start()
+                listener = FileListener(transcriber)
+                listener.set_input_file(self.file_listen_props.selected_file.get())
+                self.listeners.append(listener)
+            else:
+                # Create listeners for each enabled input line
+                for input_line in self.live_listen_props.audio_input_lines:
+                    transcriber_config = TranscriberConfig(
+                        recogniser_name=self.recognizer_props.selected_recognizer.get(),
+                        tmp_directory=self.output_props.tmp_directory.get(),
+                        use_ai=self.recognizer_props.use_ai.get(),
+                        model_name=model_name,
+                        transcription_index=transcription_index,
+                        speaker_name=input_line.speaker_name
+                    )
+                    transcriber = Transcriber(output_writer, transcriber_config)
+                    transcriber.init()
+
+                    if input_line.record or input_line.transcribe:
+                        audio_config = AudioListenerConfig(
+                            input_line=input_line,
+                            chunk_duration=int(self.recognizer_props.chunk_duration.get()),
+                            transcription_index=transcription_index
+                        )
+                        listener = AudioListener(transcriber, audio_config)
+                        self.listeners.append(listener)
+
+            for listener in self.listeners:
+                listener.start()
+
             self.status_props.status.set(statusTranscribing)
             self.status_props.transcribing = True
             self.status_props.start_button.configure(text="Stop")
@@ -118,11 +141,12 @@ class TranscriberApp:
 
     def _stop_transcribing(self):
         self.status_props.status.set(statusFinishing)
-        if self.listener:
-            self.listener.stop()
+        for listener in self.listeners:
+            listener.stop()
+        self.listeners = []
 
     def set_initial_state(self):
-        self.listener = None
+        self.listeners = []
         self.status_props.transcribing = False
         self.status_props.status.set(statusReady)
         self.status_props.start_button.configure(text="Start")

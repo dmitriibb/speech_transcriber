@@ -30,11 +30,16 @@ class Transcriber:
         self._whisper_model = None
         self._start_processing_thread()
         self._ready = False
+        self._transcription_index = config.transcription_index
+        self.speaker_name = config.speaker_name
 
     def init(self):
         if self.use_ai:
             self._load_ai_model()
         self._ready = True
+
+    def get_output_directory(self) -> str:
+        return self.output_writer.get_output_directory()
         
     def _start_processing_thread(self):
         self._should_stop = False
@@ -51,18 +56,18 @@ class Transcriber:
             chunk_audio = self._processing_queue.get(timeout=1.0)
             with self._lock:
                 transcribed = self._transcribe(chunk_audio)
-                logger.log(f"Transcriber chunk {chunk_audio.index}")
-                self.output_writer.write(ChunkTranscribed(chunk_audio.index, transcribed))
+                logger.log(f"Transcriber {self.speaker_name} chunk {chunk_audio.index}")
+                self.output_writer.write(ChunkTranscribed(chunk_audio.index, transcribed, self.speaker_name))
                 self._processing_queue.task_done()
         except Empty:
             pass # No chunks to process, continue waiting
         
-    def transcribe_chunk(self, chunk_audio: ChunkAudio):
+    def transcribe_chunk(self, chunk_audio: ChunkAudio, speaker_name: Optional[str] = None):
         if not self._ready:
-            raise Exception("Transcriber is not ready")
+            raise Exception(f"Transcriber {self.speaker_name} is not ready")
         transcribed = self._transcribe(chunk_audio)
         if transcribed:
-            self.output_writer.write(ChunkTranscribed(chunk_audio.index, transcribed))
+            self.output_writer.write(ChunkTranscribed(chunk_audio.index, transcribed, speaker_name))
 
     def transcribe_chunk_async(self, chunk_audio: ChunkAudio):
         if not self._ready:
@@ -71,8 +76,9 @@ class Transcriber:
 
     def transcribe_file(self, file_path: str):
         transcribed = self._transcribe_file_with_whisper(file_path)
-        # Format the transcribed text to have each sentence on a new line
+        logger.log(f"Transcriber {self.speaker_name}: file transcribe finished, now formatting the output")
         formatted_text = self._format_sentences(transcribed)
+        logger.log(f"Transcriber {self.speaker_name}: formatting finished")
         self.output_writer.write(ChunkTranscribed(1, formatted_text))
 
     def _format_sentences(self, text: str) -> str:
@@ -139,12 +145,12 @@ class Transcriber:
         if self._whisper_model is None:
             if self.model_name is None:
                 raise Exception("AI model name is not configured")
-            logger.log(f"Loading Whisper model: {self.model_name}...")
+            logger.log(f"Transcriber {self.speaker_name}: loading Whisper model: {self.model_name}...")
             self._whisper_model = whisper.load_model(
                 name=self.model_name,
                 download_root=self.tmp_directory
             )
-        logger.log("Whisper model loaded")
+        logger.log(f"Transcriber {self.speaker_name}: Whisper model loaded")
 
     def _transcribe_whisper(self, chunk_audio: ChunkAudio) -> str:
         try:
@@ -152,7 +158,7 @@ class Transcriber:
             wav_bytes = self._numpy_to_wav(chunk_audio.data)
             
             # Save to a temporary file since Whisper works with files
-            temp_file = "temp_chunk.wav"
+            temp_file = f"temp_chunk_{self.speaker_name}.wav"
             with open(temp_file, "wb") as f:
                 f.write(wav_bytes)
 
@@ -193,8 +199,9 @@ class Transcriber:
         return bytes_io.getvalue()
 
     def stop(self):
-        """Stop the transcriber and its background processing."""
+        logger.log(f"Transcribe {self.speaker_name}:  stop")
         self._should_stop = True
         while not self._processing_queue.empty():
             self._process_chunk_from_queue()
+            logger.log(f"Transcriber {self.speaker_name}: process remaining chunks {self._processing_queue.qsize()}")
         self.output_writer.stop()

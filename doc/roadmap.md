@@ -111,3 +111,27 @@ Description: add next features
 
 ### Iteration 6
 Status: TODO
+
+Goal: refactor UI to support multiple audio listeners at once. 
+That will allow us to listen to multiple people at once and distinguish their speech in the transcribed text later
+
+Description: refactor UI and implement next features
+- In the GUI live_frame we should have [Add] button. When the button is clicked - the new live input line should be added
+- Structure of the live input line:
+  - [-] button - removes the current line
+  - [audio devices dropdown] - we already have this field implemented, but only for 1 device 
+  - [name] - name of the speaker. short text input. Default: A, B, C, D letter for each new line
+  - [record checkbox] - if true - then in the AudioListener we should record this device and save the recording into hte output directory
+  - [transcribe checkbox] - if true - then AudioListener should transcribe this device
+- Desired result example:
+  - we have 2 audio devices selected: `[mic 1][A][record=True][transcribe=True]` and `[mic 2][B][record=True][transcribe=True]`
+  - When we click start 2 Transcribers and 2 AudioListeners will be created - one for each input device
+  - In the output directory we will have 2 audio record: `rec-1-A.wav`, `rec-1-B.wav`
+  - In the output directory we will have 1 text transcription: `transcription-1.txt`. But in that file we will have 2 transcriptions like:
+    - A: Hello
+    - B: Hello indeed, how are you?
+    - A: I'm good, thanks
+    - B: glad to hear
+
+### Iteration 7
+Status: TODO

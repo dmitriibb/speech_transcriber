@@ -1,4 +1,6 @@
 from enum import Enum
+from dataclasses import dataclass
+from typing import Optional
 
 from src.constants import deviceTypeInput, deviceTypeOutput
 
@@ -21,13 +23,21 @@ class ChunkAudio:
         self.data = data
 
 class ChunkTranscribed:
-    def __init__(self, index: int, data):
+    def __init__(self, index: int, text: str, speaker_name: Optional[str] = None):
         self.index = index
-        self.data = data
+        self.text = text
+        self.speaker_name = speaker_name
 
 class InputMode(Enum):
     LIVE = "Live"
     FILE = "File"
+
+@dataclass
+class AudioInputLine:
+    device_name: str
+    speaker_name: str
+    record: bool
+    transcribe: bool
 
 class ListenerBase:
     def start(self):

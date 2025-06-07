@@ -34,11 +34,10 @@ class FileListener(ListenerBase):
                 self._processing_thread._stop()
                 logger.log("FileListener interrupted current file processing")
             except Exception as e:
-                logger.error(f"FileListener can't interrupted current file processing: {e}")
+                logger.error(f"FileListener can't interrupted current file processing: {e}."
+                             f" You need to manually close the app or wait until transcription is finished")
         logger.log("FileListener stop")
 
     def _process_file(self):
-        # Load audio file using pydub
         self.transcriber.transcribe_file(self.input_file)
-        self.stop()
         self.transcriber.stop()

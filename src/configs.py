@@ -1,15 +1,26 @@
+from dataclasses import dataclass
+from typing import Optional
+
+from src.model import AudioInputLine
+
+
+@dataclass
 class OutputConfig:
-    def __init__(self, output_dir: str):
-        self.output_dir = output_dir
+    output_directory: str
 
-class AudioListenerConfig:
-    def __init__(self, audio_device_name: str, chunk_duration: int):
-        self.audio_device_name = audio_device_name
-        self.chunk_duration = chunk_duration
 
+@dataclass
 class TranscriberConfig:
-    def __init__(self, recogniser_name: str, tmp_directory: str, use_ai: bool = False, model_name: str = None):
-        self.recogniser_name = recogniser_name
-        self.tmp_directory = tmp_directory
-        self.use_ai = use_ai
-        self.model_name = model_name
+    recogniser_name: str
+    tmp_directory: str
+    use_ai: bool
+    model_name: Optional[str]
+    transcription_index: int
+    speaker_name: str
+
+
+@dataclass
+class AudioListenerConfig:
+    input_line: AudioInputLine
+    chunk_duration: int
+    transcription_index: int
