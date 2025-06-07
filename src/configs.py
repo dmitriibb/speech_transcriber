@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from src.model import AudioInputLine
+from model import AudioInputLine
 
 
 @dataclass

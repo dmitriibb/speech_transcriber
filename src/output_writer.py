@@ -3,15 +3,15 @@ from datetime import datetime
 from threading import Lock
 from typing import Optional, Callable
 
-from src.configs import OutputConfig
-from src.logger import logger
-from src.model import ChunkTranscribed
+from configs import OutputConfig
+from logger import logger
+from model import ChunkTranscribed
 
 
 class OutputWriter:
-    def __init__(self, config: OutputConfig, on_error: Optional[Callable] = None):
+    def __init__(self, config: OutputConfig, on_finish_callback):
         self.output_directory = config.output_directory
-        self.on_error = on_error
+        self.on_finish_callback = on_finish_callback
         self._lock = Lock()
         self._current_file = None
 
@@ -37,9 +37,8 @@ class OutputWriter:
                 self._current_file.write(f"Transcription started at {datetime.now()}\n\n")
                 logger.log(f"Created new transcription file: {filename}")
             except Exception as e:
-                logger.log(f"Error creating transcription file: {e}")
-                if self.on_error:
-                    self.on_error()
+                logger.error(f"Error creating transcription file: {e}")
+                raise e
         return file_number
 
     def _get_next_file_number(self):
@@ -72,8 +71,6 @@ class OutputWriter:
                 logger.log(f"OutputWriter {chunk.speaker_name}: chunk {chunk.index}")
             except Exception as e:
                 logger.error(f"Error writing to transcription file: {e}")
-                if self.on_error:
-                    self.on_error()
 
     def stop(self):
         """Close the current transcription file"""
@@ -85,5 +82,5 @@ class OutputWriter:
                     self._current_file = None
                 except Exception as e:
                     logger.log(f"Error closing transcription file: {e}")
-                    if self.on_error:
-                        self.on_error()
+            if self.on_finish_callback:
+                self.on_finish_callback()

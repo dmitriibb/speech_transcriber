@@ -2,8 +2,8 @@ from threading import Thread
 
 import sounddevice as sd
 
-from src.model import AudioDeviceWrapper
-from src.logger import logger
+from model import AudioDeviceWrapper
+from logger import logger
 
 
 def get_devices_names(include_output_devices = False):

@@ -3,6 +3,10 @@ import subprocess
 import sys
 import shutil
 
+import PyInstaller.__main__
+from pathlib import Path
+import site
+
 def install_build_requirements():
     print("Installing build requirements...")
     # First uninstall PyInstaller to ensure clean state
@@ -109,33 +113,40 @@ def build_exe():
         raise
 
 def main():
-    try:
-        # Make sure we're in the right directory
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        os.chdir(script_dir)
-        
-        print("Note: This script requires a modification to Python's dis.py file.")
-        print("Please ensure you have added 'extended_arg = 0' in the else clause")
-        print("of the _unpack_opargs function in Python310\\Lib\\dis.py")
-        
-        # Install requirements
-        install_build_requirements()
-        
-        # Clean previous builds
-        cleanup()
-        
-        # Build the exe
-        build_exe()
-        
-        print("\nBuild completed successfully!")
-        print("You can find speech_transcriber.exe in the 'dist' directory")
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Error during build process: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        sys.exit(1)
+    cleanup()
+    # Get the absolute path of the scriptAdd commentMore actions
+    script_path = os.path.dirname(os.path.abspath(__file__))
+
+    # Define the path to main.py
+    main_path = os.path.join(script_path, 'src', 'main.py')
+
+    # Get site-packages directory
+    site_packages = site.getsitepackages()[0]
+
+    # Define PyInstaller arguments
+    args = [
+        main_path,
+        '--onefile',
+        '--windowed',
+        '--name=SpeechTranscriber',
+        '--add-data=src;src',
+        '--hidden-import=queue',
+        '--hidden-import=pocketsphinx',
+        '--hidden-import=speech_recognition',
+        '--hidden-import=sounddevice',
+        '--hidden-import=numpy',
+        '--hidden-import=pyaudio',
+        '--collect-all=whisper',
+        '--collect-all=sounddevice',
+        '--collect-all=pocketsphinx',
+        '--collect-all=speech_recognition',
+        '--collect-all=numpy',
+        '--collect-all=pyaudio',
+        '--clean',
+    ]
+
+    # Run PyInstaller
+    PyInstaller.__main__.run(args)
 
 if __name__ == "__main__":
     main() 
