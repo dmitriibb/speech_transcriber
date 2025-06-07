@@ -28,3 +28,10 @@ class ChunkTranscribed:
 class InputMode(Enum):
     LIVE = "Live"
     FILE = "File"
+
+class ListenerBase:
+    def start(self):
+        pass
+
+    def stop(self):
+        pass

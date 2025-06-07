@@ -1,20 +1,17 @@
 import os
-import wave
 from threading import Thread
 
-import numpy as np
-from pydub import AudioSegment
-import soundfile as sf
-import io
 
 from src.logger import logger
+from src.model import ListenerBase
 
 
-class FileListener:
+class FileListener(ListenerBase):
     def __init__(self, transcriber):
         self.transcriber = transcriber
         self.is_running = False
         self.input_file = None
+        self._processing_thread = None
 
     def set_input_file(self, file_path):
         """Set the input file path to process"""
@@ -30,7 +27,15 @@ class FileListener:
         logger.log("FileListener start")
 
     def stop(self):
-        logger.log("FileListener finished")
+        logger.log("FileListener stopping")
+
+        if self._processing_thread is not None and self._processing_thread.is_alive():
+            try:
+                self._processing_thread._stop()
+                logger.log("FileListener interrupted current file processing")
+            except Exception as e:
+                logger.error(f"FileListener can't interrupted current file processing: {e}")
+        logger.log("FileListener stop")
 
     def _process_file(self):
         # Load audio file using pydub

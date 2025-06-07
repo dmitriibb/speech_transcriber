@@ -3,7 +3,7 @@ import numpy as np
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from src.model import AudioDeviceWrapper
+from src.model import AudioDeviceWrapper, ListenerBase
 from src.audio_devices import get_device_by_name, SystemSoundRecorder
 from src.configs import AudioListenerConfig
 from src.constants import deviceTypeInput
@@ -12,7 +12,7 @@ from src.model import ChunkAudio
 from src.transcriber import Transcriber
 
 
-class AudioListener:
+class AudioListener(ListenerBase):
     def __init__(self, transcriber: Transcriber, config: AudioListenerConfig):
         self.transcriber = transcriber
         self.chunk_duration = config.chunk_duration
@@ -45,7 +45,7 @@ class AudioListener:
 
     def _audio_callback(self, data, frames, time, status):
         """Callback function for the audio stream."""
-        if status and self.app:
+        if status:
             logger.log(f'Audio callback status: {status}')
         if not self.stop_event.is_set():
             self.audio_queue.put(data.copy())
@@ -65,8 +65,8 @@ class AudioListener:
                     chunk = ChunkAudio(self.chunk_counter, audio)
                     self.transcriber.transcribe_chunk_async(chunk)
                     self.audio_queue.task_done()
-                    self.chunk_counter += 1
                     logger.log(f"AudioListener chunk {self.chunk_counter}")
+                    self.chunk_counter += 1
                 except Empty:
                     continue  # No chunks to process, continue waiting
 
@@ -86,8 +86,8 @@ class AudioListener:
                     chunk = ChunkAudio(self.chunk_counter, audio)
                     self.transcriber.transcribe_chunk_async(chunk)
                     self.audio_queue.task_done()
-                    self.chunk_counter += 1
                     logger.log(f"AudioListener chunk {self.chunk_counter}")
+                    self.chunk_counter += 1
                 except Empty:
                     continue  # No chunks to process, continue waiting
         # self.recorder = SystemSoundRecorder(
