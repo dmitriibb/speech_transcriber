@@ -1,3 +1,5 @@
+from enum import Enum
+
 from src.constants import deviceTypeInput, deviceTypeOutput
 
 
@@ -23,4 +25,6 @@ class ChunkTranscribed:
         self.index = index
         self.data = data
 
-
+class InputMode(Enum):
+    LIVE = "Live"
+    FILE = "File"

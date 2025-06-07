@@ -13,17 +13,17 @@ from file_listener import FileListener
 from src.audio_devices import get_devices_names
 from src.configs import OutputConfig, TranscriberConfig, AudioListenerConfig
 from src.constants import *
+from src.gui_renderer import MainProps, LiveListenProps, FileListenProps, GuiRenderer
 from src.gui_utils import get_available_models, get_downloaded_models, format_model_name
 from src.logger import Logger, logger
+from src.model import InputMode
 from transcriber import Transcriber
 from output_writer import OutputWriter
 
-class InputMode(Enum):
-    LIVE = "Live"
-    FILE = "File"
+
 
 class TranscriberApp:
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Speech Transcriber")
         self.root.geometry("600x700")
@@ -32,9 +32,19 @@ class TranscriberApp:
         self.transcribing = False
         self.logger = Logger()
 
-        self.input_mode = tk.StringVar(value=InputMode.LIVE.value)
-        self.selected_input = tk.StringVar()
-        self.input_file = tk.StringVar()
+        self.main_props = MainProps(InputMode.LIVE)
+        self.live_listen_props = LiveListenProps()
+        self.file_listen_props = FileListenProps()
+        self.gui = GuiRenderer(
+            root = self.root,
+            main_props=self.main_props,
+            live_listen_props=self.live_listen_props,
+            file_listen_props=self.file_listen_props
+        )
+
+        self.gui.render_main()
+        self.gui.render_live_listen()
+        self.gui.render_file_listen()
 
         base_directory = os.path.dirname(os.path.abspath(__file__))
         head, tail = os.path.split(base_directory)
@@ -49,7 +59,6 @@ class TranscriberApp:
         self.tmp_directory = tk.StringVar(value=tmp_directory)
         self.selected_recognizer = tk.StringVar()
         self.status = tk.StringVar()
-        self.include_output_devices = tk.BooleanVar(value=False)
         self.chunk_duration = tk.StringVar(value="5")
         self.use_ai = tk.BooleanVar(value=False)
         self.selected_ai_model = tk.StringVar()
@@ -64,104 +73,12 @@ class TranscriberApp:
         self.selected_recognizer.set(recogniserGoogleCloud)
         
     def _create_widgets(self):
-        self._input_mode_widget()
-        self._audio_source_widget()
         self._output_file_widget()
         self._recogniser_widget()
         self._status_widget()
         self._start_button_widget()
         self._logs_widget()
 
-    def _input_mode_widget(self):
-        mode_frame = ttk.LabelFrame(self.root, text="Input Mode", padding="10")
-        mode_frame.pack(fill="x", padx=10, pady=5)
-
-        # Create radio buttons for mode selection
-        live_radio = ttk.Radiobutton(
-            mode_frame,
-            text=InputMode.LIVE.value,
-            variable=self.input_mode,
-            value=InputMode.LIVE.value,
-            command=self._update_input_mode
-        )
-        live_radio.pack(side="left", padx=5)
-
-        file_radio = ttk.Radiobutton(
-            mode_frame,
-            text=InputMode.FILE.value,
-            variable=self.input_mode,
-            value=InputMode.FILE.value,
-            command=self._update_input_mode
-        )
-        file_radio.pack(side="left", padx=5)
-
-    def _audio_source_widget(self):
-        self.input_frame = ttk.LabelFrame(self.root, text="Audio Input", padding="10")
-        self.input_frame.pack(fill="x", padx=10, pady=5)
-
-        # Live input widgets
-        self.live_frame = ttk.Frame(self.input_frame)
-        
-        # Create a container frame for dropdown and checkbox
-        container = ttk.Frame(self.live_frame)
-        container.pack(fill="x")
-
-        # Add the dropdown on the left side
-        self.audio_device_dropdown = ttk.Combobox(
-            container,
-            textvariable=self.selected_input,
-            state="readonly"
-        )
-        self.audio_device_dropdown['values'] = self._get_input_devices()
-        self.audio_device_dropdown.pack(side="left", fill="x", expand=True)
-
-        # Add the checkbox on the right side
-        include_output_checkbox = ttk.Checkbutton(
-            container,
-            text="Include output devices",
-            variable=self.include_output_devices,
-            command=self._refresh_input_devices
-        )
-        include_output_checkbox.pack(side="right", padx=(5, 0))
-
-        # File input widgets
-        self.file_frame = ttk.Frame(self.input_frame)
-        
-        file_entry = ttk.Entry(
-            self.file_frame,
-            textvariable=self.input_file,
-            state="readonly"
-        )
-        file_entry.pack(side="left", fill="x", expand=True)
-
-        choose_file_btn = ttk.Button(
-            self.file_frame,
-            text="Choose File",
-            command=self._choose_input_file
-        )
-        choose_file_btn.pack(side="right", padx=(5, 0))
-
-        # Show initial frame based on mode
-        self._update_input_mode()
-
-    def _update_input_mode(self):
-        if self.input_mode.get() == InputMode.LIVE.value:
-            self.file_frame.pack_forget()
-            self.live_frame.pack(fill="x")
-        else:
-            self.live_frame.pack_forget()
-            self.file_frame.pack(fill="x")
-
-    def _choose_input_file(self):
-        file_path = filedialog.askopenfilename(
-            title="Select Audio File",
-            filetypes=[
-                ("Audio Files", "*.mp3 *.wav *.m4a *.aac *.ogg"),
-                ("All Files", "*.*")
-            ]
-        )
-        if file_path:
-            self.input_file.set(file_path)
 
     def _output_file_widget(self):
         output_frame = ttk.LabelFrame(self.root, text="Output Directory", padding="10")
@@ -319,19 +236,6 @@ class TranscriberApp:
             tk.messagebox.showerror("Error", message)
         logger.set_show_error_func(show_error)
 
-    def _get_input_devices(self):
-        return get_devices_names(self.include_output_devices.get())
-
-    def _refresh_input_devices(self):
-        current_selection = self.selected_input.get()
-        new_values = self._get_input_devices()
-        self.audio_device_dropdown['values'] = new_values
-
-        if current_selection in new_values:
-            self.selected_input.set(current_selection)
-        else:
-            self.selected_input.set('')
-
     def _choose_directory(self):
         directory = filedialog.askdirectory(
             initialdir=self.output_directory.get(),
@@ -356,7 +260,7 @@ class TranscriberApp:
             self._start_transcribing()
 
     def _start_transcribing(self):
-        transcribing_file = self.input_mode.get() == InputMode.FILE.value
+        transcribing_file = self.main_props.input_mode.get() == InputMode.FILE.value
         if transcribing_file and not self.use_ai:
             logger.show_error("File transcribing is only available with AI")
             return
@@ -379,10 +283,10 @@ class TranscriberApp:
 
             if transcribing_file:
                 self.listener = FileListener(transcriber)
-                self.listener.set_input_file(self.input_file.get())
+                self.listener.set_input_file(self.file_listen_props.selected_file.get())
             else:
                 audio_config = AudioListenerConfig(
-                    audio_device_name=self.selected_input.get(),
+                    audio_device_name=self.live_listen_props.selected_live_device.get(),
                     chunk_duration=int(self.chunk_duration.get())
                 )
                 self.listener = AudioListener(transcriber, audio_config)
