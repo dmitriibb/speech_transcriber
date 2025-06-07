@@ -243,14 +243,22 @@ class GuiRenderer:
         return get_devices_names(self.live_listen_props.include_output_devices.get())
 
     def _refresh_input_devices(self):
-        current_selection = self.live_listen_props.selected_live_device.get()
         new_values = self._get_input_devices()
-        self.audio_device_dropdown['values'] = new_values
-
-        if current_selection in new_values:
-            self.live_listen_props.selected_live_device.set(current_selection)
-        else:
-            self.live_listen_props.selected_live_device.set('')
+        
+        # Refresh all input line dropdowns
+        for child in self.input_lines_frame.winfo_children():
+            # Find the device dropdown in this input line frame
+            for widget in child.winfo_children():
+                if isinstance(widget, ttk.Combobox):
+                    current_selection = widget.get()
+                    widget['values'] = new_values
+                    
+                    # Keep current selection if it's still valid
+                    if current_selection in new_values:
+                        widget.set(current_selection)
+                    else:
+                        widget.set('')
+                    break
 
     def render_file_listen(self):
         self._render_input_frame()

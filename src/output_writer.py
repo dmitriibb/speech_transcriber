@@ -69,8 +69,9 @@ class OutputWriter:
 
                 self._current_file.write(text)
                 self._current_file.flush()
+                logger.log(f"OutputWriter {chunk.speaker_name}: chunk {chunk.index}")
             except Exception as e:
-                logger.log(f"Error writing to transcription file: {e}")
+                logger.error(f"Error writing to transcription file: {e}")
                 if self.on_error:
                     self.on_error()
 

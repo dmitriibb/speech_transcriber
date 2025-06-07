@@ -110,7 +110,7 @@ Description: add next features
 - If user selects option with "to download" - then we download that model into the tmp_directory
 
 ### Iteration 6
-Status: TODO
+Status: Done
 
 Goal: refactor UI to support multiple audio listeners at once. 
 That will allow us to listen to multiple people at once and distinguish their speech in the transcribed text later
@@ -134,4 +134,13 @@ Description: refactor UI and implement next features
     - B: glad to hear
 
 ### Iteration 7
+Status: TODO
+
+Goal: Add more settings for AI transcription
+
+Description:
+
+
+
+### Iteration 8
 Status: TODO

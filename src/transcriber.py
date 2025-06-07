@@ -199,7 +199,7 @@ class Transcriber:
         return bytes_io.getvalue()
 
     def stop(self):
-        logger.log(f"Transcribe {self.speaker_name}:  stop")
+        logger.log(f"Transcriber {self.speaker_name}:  stop")
         self._should_stop = True
         while not self._processing_queue.empty():
             self._process_chunk_from_queue()
