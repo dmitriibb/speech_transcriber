@@ -2,7 +2,7 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
 
-from src.constants import deviceTypeInput, deviceTypeOutput
+from constants import deviceTypeInput, deviceTypeOutput
 
 
 class AudioDeviceWrapper:

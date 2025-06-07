@@ -5,13 +5,13 @@ from threading import Thread, Event
 import wave
 import os
 
-from src.model import AudioDeviceWrapper, ListenerBase, AudioInputLine
-from src.audio_devices import get_device_by_name, SystemSoundRecorder
-from src.configs import AudioListenerConfig
-from src.constants import deviceTypeInput
-from src.logger import Logger, logger
-from src.model import ChunkAudio
-from src.transcriber import Transcriber
+from model import AudioDeviceWrapper, ListenerBase, AudioInputLine
+from audio_devices import get_device_by_name, SystemSoundRecorder
+from configs import AudioListenerConfig
+from constants import deviceTypeInput
+from logger import Logger, logger
+from model import ChunkAudio
+from transcriber import Transcriber
 
 
 class AudioListener(ListenerBase):

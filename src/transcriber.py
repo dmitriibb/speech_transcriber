@@ -8,11 +8,11 @@ import os
 import wave
 import whisper
 
-from src.configs import TranscriberConfig
-from src.logger import logger
-from src.model import ChunkAudio, ChunkTranscribed
-from src.output_writer import OutputWriter
-from src.constants import *
+from configs import TranscriberConfig
+from logger import logger
+from model import ChunkAudio, ChunkTranscribed
+from output_writer import OutputWriter
+from constants import *
 
 
 class Transcriber:

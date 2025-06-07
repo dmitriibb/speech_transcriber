@@ -2,11 +2,11 @@ import tkinter as tk
 from enum import Enum
 from tkinter import ttk, filedialog, messagebox
 
-from src.audio_devices import get_devices_names
-from src.model import InputMode, AudioInputLine
-from src.actions import TranscriberActions
-from src.constants import recogniserDummy, recogniserSphinx, recogniserGoogleCloud
-from src.gui_utils import get_available_models, get_downloaded_models, format_model_name
+from audio_devices import get_devices_names
+from model import InputMode, AudioInputLine
+from actions import TranscriberActions
+from constants import recogniserDummy, recogniserSphinx, recogniserGoogleCloud
+from gui_utils import get_available_models, get_downloaded_models, format_model_name
 import whisper
 import threading
 

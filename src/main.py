@@ -4,12 +4,12 @@ import whisper
 
 from audio_listener import AudioListener
 from file_listener import FileListener
-from src.configs import OutputConfig, TranscriberConfig, AudioListenerConfig
-from src.constants import *
-from src.gui_renderer import MainProps, LiveListenProps, FileListenProps, OutputProps, RecognizerProps, StatusProps, LogsProps, GuiRenderer
-from src.actions import TranscriberActions
-from src.logger import Logger, logger
-from src.model import InputMode, ListenerBase
+from configs import OutputConfig, TranscriberConfig, AudioListenerConfig
+from constants import *
+from gui_renderer import MainProps, LiveListenProps, FileListenProps, OutputProps, RecognizerProps, StatusProps, LogsProps, GuiRenderer
+from actions import TranscriberActions
+from logger import Logger, logger
+from model import InputMode, ListenerBase
 from transcriber import Transcriber
 from output_writer import OutputWriter
 

@@ -2,8 +2,8 @@ import os
 from threading import Thread
 
 
-from src.logger import logger
-from src.model import ListenerBase
+from logger import logger
+from model import ListenerBase
 
 
 class FileListener(ListenerBase):

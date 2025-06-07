@@ -85,7 +85,7 @@ Description: we need to implement next features
 ### Iteration 4
 Status: Done
 
-Goal: add support to transribe a single mp3 file
+Goal: add support to transcribe a single mp3 file
 
 Description: need to add next features
 - at the top of the GUI add toggle or switch between transcribe "live" and "file"
@@ -136,10 +136,12 @@ Description: refactor UI and implement next features
 ### Iteration 7
 Status: TODO
 
-Goal: Add more settings for AI transcription
+Goal: Be able to build the application into speach_transcriber.exe file
 
 Description:
-
+- Write some script, which can be executed on my Windows machine. This script should build this application into the one .exe file
+- We use Python 3.10.0
+- Use requirements-build-exe.txt file for dependencies management
 
 
 ### Iteration 8
