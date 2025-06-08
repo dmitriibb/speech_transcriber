@@ -4,34 +4,15 @@ A local Windows application for transcribing speech to text.
 
 ## Setup Instructions
 
-1. Make sure you have Python 3.8 or higher installed
-2. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. Make sure you have Python 3.10 installed
+   1. [go here](https://www.python.org/downloads/release/python-3100/) and choose `Windows installer (64-bit)`
+2. Install ffmpeg 
+   1. Install [choco](https://community.chocolatey.org/) 
+   2. Run cmd or PowerShell as Administrator and execute the next command `choco install ffmpeg`
+3. run `INSTALL.bat`
 
 ## Running the Application
 
-1. Navigate to the project directory
-2. Run the main script:
-   ```bash
-   python src/main.py
-   ```
+run `START.bat`
 
-## Features (Iteration 0)
 
-- Select audio input source from system devices
-- Choose output directory for transcriptions
-- Start/Stop transcription control
-- All processing is done locally
-
-## Project Structure
-
-```
-speech_transcriber/
-├── doc/              # Documentation
-├── src/              # Source code
-│   └── main.py       # Main application
-├── requirements.txt  # Python dependencies
-└── README.md        # Project documentation
-```
