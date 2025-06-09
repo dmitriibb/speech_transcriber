@@ -13,11 +13,13 @@ from logger import logger
 from model import ChunkAudio, ChunkTranscribed
 from output_writer import OutputWriter
 from constants import *
+from ai_model import AiModel
 
 
 class Transcriber:
-    def __init__(self, output_writer: OutputWriter, config: TranscriberConfig):
+    def __init__(self, output_writer: OutputWriter, config: TranscriberConfig, ai_model: AiModel):
         self.output_writer = output_writer
+        self._ai_model = ai_model
         self.recognizer_name = config.recogniser_name
         self.tmp_directory = config.tmp_directory
         self.use_ai = config.use_ai
@@ -27,15 +29,12 @@ class Transcriber:
         self._processing_thread: Optional[Thread] = None
         self._should_stop = False
         self._recognizer = sr.Recognizer()
-        self._whisper_model = None
         self._start_processing_thread()
         self._ready = False
         self._transcription_index = config.transcription_index
         self.speaker_name = config.speaker_name
 
     def init(self):
-        if self.use_ai:
-            self._load_ai_model()
         self._ready = True
 
     def get_output_directory(self) -> str:
@@ -75,7 +74,7 @@ class Transcriber:
         self._processing_queue.put(chunk_audio)
 
     def transcribe_file(self, file_path: str):
-        transcribed = self._transcribe_file_with_whisper(file_path)
+        transcribed = self._transcribe_file_with_ai(file_path)
         logger.log(f"Transcriber {self.speaker_name}: file transcribe finished, now formatting the output")
         formatted_text = self._format_sentences(transcribed)
         logger.log(f"Transcriber {self.speaker_name}: formatting finished")
@@ -92,7 +91,7 @@ class Transcriber:
 
     def _transcribe(self, chunk_audio: ChunkAudio) -> str:
         if self.use_ai:
-            return self._transcribe_whisper(chunk_audio)
+            return self._transcribe_ai(chunk_audio)
         if self.recognizer_name == recogniserDummy:
             return self._transcribe_dummy(chunk_audio)
         elif self.recognizer_name == recogniserSphinx:
@@ -141,20 +140,8 @@ class Transcriber:
             logger.log(f"Error processing audio chunk: {e}")
             return ""
 
-    def _load_ai_model(self):
-        if self._whisper_model is None:
-            if self.model_name is None:
-                raise Exception("AI model name is not configured")
-            logger.log(f"Transcriber {self.speaker_name}: loading Whisper model: {self.model_name}...")
-            self._whisper_model = whisper.load_model(
-                name=self.model_name,
-                download_root=self.tmp_directory
-            )
-        logger.log(f"Transcriber {self.speaker_name}: Whisper model loaded")
-
-    def _transcribe_whisper(self, chunk_audio: ChunkAudio) -> str:
+    def _transcribe_ai(self, chunk_audio: ChunkAudio) -> str:
         try:
-            # Convert numpy array to temporary WAV file
             wav_bytes = self._numpy_to_wav(chunk_audio.data)
             
             # Save to a temporary file since Whisper works with files
@@ -162,21 +149,19 @@ class Transcriber:
             with open(temp_file, "wb") as f:
                 f.write(wav_bytes)
 
-            result = self._transcribe_file_with_whisper(temp_file)
-
+            result = self._transcribe_file_with_ai(temp_file)
             os.remove(temp_file)
-            
             return result
 
         except Exception as e:
             logger.log(f"Error in Whisper transcription: {e}")
             return ""
 
-    def _transcribe_file_with_whisper(self, file_path: str) -> str:
-        if self._whisper_model is None:
+    def _transcribe_file_with_ai(self, file_path: str) -> str:
+        if self._ai_model is None:
             raise Exception("Ai model is not loaded")
 
-        result = self._whisper_model.transcribe(file_path)
+        result = self._ai_model.transcribe(file_path)
         return result["text"].strip()
 
     def _numpy_to_wav(self, audio_chunk: np.ndarray) -> bytes:

@@ -1,6 +1,5 @@
 import tkinter as tk
 import os
-import whisper
 
 from audio_listener import AudioListener
 from file_listener import FileListener
@@ -10,6 +9,7 @@ from gui_renderer import MainProps, LiveListenProps, FileListenProps, OutputProp
 from actions import TranscriberActions
 from logger import Logger, logger
 from model import InputMode, ListenerBase
+from ai_model import AiModel
 from transcriber import Transcriber
 from output_writer import OutputWriter
 
@@ -87,9 +87,16 @@ class TranscriberApp:
             output_writer = OutputWriter(output_config, self.set_initial_state)
             transcription_index = output_writer.start_new_file()
 
+            use_ai = self.recognizer_props.use_ai.get()
             model_name = self.recognizer_props.selected_ai_model.get().split(" - ")[0] if self.recognizer_props.use_ai.get() else None
 
             self.listeners = []
+
+            if use_ai:
+                ai_model = AiModel(model_name, self.output_props.tmp_directory.get())
+                ai_model.load()
+            else:
+                ai_model = None
 
             if transcribing_file:
                 transcriber_config = TranscriberConfig(
@@ -100,7 +107,7 @@ class TranscriberApp:
                     transcription_index=transcription_index,
                     speaker_name=""
                 )
-                transcriber = Transcriber(output_writer, transcriber_config)
+                transcriber = Transcriber(output_writer, transcriber_config, ai_model)
                 transcriber.init()
 
                 listener = FileListener(transcriber)
@@ -117,7 +124,7 @@ class TranscriberApp:
                         transcription_index=transcription_index,
                         speaker_name=input_line.speaker_name
                     )
-                    transcriber = Transcriber(output_writer, transcriber_config)
+                    transcriber = Transcriber(output_writer, transcriber_config, ai_model)
                     transcriber.init()
 
                     if input_line.record or input_line.transcribe:
