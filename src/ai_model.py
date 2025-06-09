@@ -1,3 +1,4 @@
+import torch
 import whisper
 
 from logger import logger
@@ -16,7 +17,8 @@ class AiModel:
         if self._whisper_model is None:
             if self._model_name is None:
                 raise Exception("AI model name is not configured")
-            logger.log(f"AiModel: loading Whisper model: {self._model_name}...")
+            cuda = torch.cuda.is_available()
+            logger.log(f"AiModel: loading Whisper model '{self._model_name}', (cuda: {cuda})...")
             self._whisper_model = whisper.load_model(
                 name=self._model_name,
                 download_root=self._tmp_directory
