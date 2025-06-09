@@ -26,7 +26,7 @@ class LiveListenProps:
         new_line = AudioInputLine(
             device_name="",
             speaker_name=self.next_speaker_name,
-            record=True,
+            record=False,
             transcribe=True
         )
         self.audio_input_lines.append(new_line)
