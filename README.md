@@ -11,6 +11,9 @@ A local Windows application for transcribing speech to text.
    1. Run cmd or PowerShell as Administrator and execute the installation script from [choco](https://community.chocolatey.org/)
    2. Run cmd or PowerShell as Administrator and execute the next command `choco install ffmpeg`
 3. run `INSTALL.bat`, wait until it finished and closed the cmd window
+   - If you have Nvidia graphic card - you can run `INSTALL-for-nvidia-gpu.bat`. This will allow AI to run on GPU instead of CPU
+
+For getting updates run `GET-UPDATE.bat`
 
 ## Running the Application
 ### Windows
