@@ -15,10 +15,20 @@ A local Windows application for transcribing speech to text.
 
 For getting updates run `GET-UPDATE.bat`
 
+### Ubuntu
+Read [this](run_in_ubuntu.md)
+
 ## Running the Application
+
 ### Windows
 - run `START.bat`
   - This will open the app and a new cmd. Don't close the cmd, but you can see some additional logs there
+
+### Ubuntu
+- Run the app with
+    ```bash
+    python src/main.py
+    ```
 
 ## Features
 - Live transcription
